@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Assessment Results &amp; Feedback</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#1349ec",
+                "background-light": "#f6f6f8",
+                "background-dark": "#0f172a",
+              },
+              fontFamily: {
+                "display": ["Lexend"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background-dark font-display text-slate-100">
+<div class="relative flex h-auto min-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-800 px-6 lg:px-40 py-4 bg-slate-900">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-8 flex items-center justify-center rounded-lg bg-primary/10">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<h2 class="text-slate-100 text-lg font-bold leading-tight tracking-tight">Performance Dashboard</h2>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+</div>
+</header>
+<main class="px-6 lg:px-40 flex flex-1 justify-center py-8">
+<div class="layout-content-container flex flex-col max-w-[1200px] flex-1 gap-8">
+<!-- Profile & Summary Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
+<div class="flex gap-4 items-center">
+<div class="bg-primary/20 rounded-full size-16 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">person</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-slate-100 text-2xl font-bold">Alex Johnson</h1>
+<p class="text-slate-400 text-sm">Student ID: 4829 • Assessment: Final Thesis Review</p>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Final Grade</div>
+<div class="text-5xl font-black text-primary">88%</div>
+<div class="text-sm font-medium text-emerald-400 flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                            Excellent work!
+                        </div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Navigation & Stats -->
+<div class="lg:col-span-1 flex flex-col gap-6">
+<div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg bg-primary text-white" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Results Overview</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">pie_chart</span>
+<span class="text-sm font-medium">Metric Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="text-sm font-medium">Detailed Feedback</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<!-- Mini Stats -->
+<div class="bg-primary/10 p-6 rounded-xl border border-primary/20">
+<h3 class="text-primary font-bold text-sm uppercase tracking-widest mb-4">Competency Radar</h3>
+<div class="aspect-square w-full bg-slate-800 rounded-lg flex items-center justify-center border border-primary/10 overflow-hidden relative">
+<!-- Placeholder for Spider Chart Visualization -->
+<div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle,theme(colors.primary)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+<div class="relative z-10 w-32 h-32 flex items-center justify-center">
+<svg class="w-full h-full text-primary fill-primary/20 stroke-primary stroke-2 overflow-visible" viewbox="0 0 100 100">
+<polygon points="50,10 90,40 75,90 25,90 10,40"></polygon>
+<circle cx="50" cy="50" fill="currentColor" r="1"></circle>
+<line opacity="0.5" stroke-dasharray="2" x1="50" x2="50" y1="50" y2="10"></line>
+<line opacity="0.5" stroke-dasharray="2" x1="50" x2="90" y1="50" y2="40"></line>
+<line opacity="0.5" stroke-dasharray="2" x1="50" x2="75" y1="50" y2="90"></line>
+<line opacity="0.5" stroke-dasharray="2" x1="50" x2="25" y1="50" y2="90"></line>
+<line opacity="0.5" stroke-dasharray="2" x1="50" x2="10" y1="50" y2="40"></line>
+</svg>
+</div>
+<span class="absolute bottom-2 text-[10px] text-slate-500 font-bold uppercase">Multi-dimensional Analysis</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Breakdown & Feedback -->
+<div class="lg:col-span-2 flex flex-col gap-8">
+<!-- Score Breakdown Section -->
+<div class="bg-slate-900 p-8 rounded-xl border border-slate-800">
+<h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">bar_chart</span>
+                                Score Breakdown
+                            </h2>
+<div class="flex flex-col gap-8">
+<!-- Keywords -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-slate-300">Keywords Accuracy</span>
+<span class="text-xs text-slate-500">Weight: 40%</span>
+</div>
+<span class="text-lg font-bold text-primary">92%</span>
+</div>
+<div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 92%;"></div>
+</div>
+</div>
+<!-- Summary -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-slate-300">Executive Summary</span>
+<span class="text-xs text-slate-500">Weight: 30%</span>
+</div>
+<span class="text-lg font-bold text-primary">85%</span>
+</div>
+<div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 85%;"></div>
+</div>
+</div>
+<!-- Concept Map -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-slate-300">Concept Mapping</span>
+<span class="text-xs text-slate-500">Weight: 20%</span>
+</div>
+<span class="text-lg font-bold text-primary">78%</span>
+</div>
+<div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 78%;"></div>
+</div>
+</div>
+<!-- Conclusion -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-sm font-bold text-slate-300">Synthesis &amp; Conclusion</span>
+<span class="text-xs text-slate-500">Weight: 10%</span>
+</div>
+<span class="text-lg font-bold text-primary">95%</span>
+</div>
+<div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 95%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Feedback Comments -->
+<div class="bg-slate-900 p-8 rounded-xl border border-slate-800">
+<h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">comment_bank</span>
+                                Detailed Feedback
+                            </h2>
+<div class="space-y-6">
+<div class="p-4 rounded-lg bg-emerald-950/30 border border-emerald-900/50">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-emerald-400 mt-1">check_circle</span>
+<div>
+<h4 class="font-bold text-emerald-300 text-sm">Strong Synthesis</h4>
+<p class="text-sm text-emerald-400/80 mt-1 leading-relaxed">Your conclusion effectively tied together all the main research points into a cohesive final thought. Exceptional clarity in the synthesis of complex data.</p>
+</div>
+</div>
+</div>
+<div class="p-4 rounded-lg bg-amber-950/30 border border-amber-900/50">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-amber-400 mt-1">lightbulb</span>
+<div>
+<h4 class="font-bold text-amber-300 text-sm">Concept Map Improvement</h4>
+<p class="text-sm text-amber-400/80 mt-1 leading-relaxed">While the map covered the main topics, the relationships between secondary concepts could be more explicitly defined. Consider using directional arrows next time.</p>
+</div>
+</div>
+</div>
+<div class="p-4 rounded-lg bg-slate-800 border border-slate-700">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-1">info</span>
+<div>
+<h4 class="font-bold text-slate-200 text-sm">Keyword Strategy</h4>
+<p class="text-sm text-slate-400 mt-1 leading-relaxed">Keywords used were highly relevant to the industry standard. This significantly boosted the discoverability score of your summary section.</p>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full mt-8 py-3 rounded-lg bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors">
+                                Download Full Report (PDF)
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Info -->
+<footer class="px-6 lg:px-40 py-8 border-t border-slate-800 bg-slate-900">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-xs">
+<p>© 2024 Educational Insights Dashboard. All metrics are calculated based on weighted criteria.</p>
+<div class="flex gap-4">
+<a class="hover:text-primary transition-colors" href="#">Help Center</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Learner Dashboard - Antigravity Case Study Platform</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1349ec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-slate-950 font-display text-slate-100 antialiased">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-800 bg-slate-900 px-6 md:px-10 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<h2 class="text-slate-100 text-lg font-bold leading-tight tracking-tight">Antigravity</h2>
+</div>
+<nav class="hidden lg:flex items-center gap-8">
+<a class="text-primary text-sm font-semibold leading-normal" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">My Cases</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Library</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Community</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden md:flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-slate-400 flex border-none bg-slate-800 items-center justify-center pl-4 rounded-l-lg" data-icon="search">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-slate-800 focus:ring-0 placeholder:text-slate-500 px-4 rounded-r-lg text-sm font-normal text-slate-100" placeholder="Search case studies..." value=""/>
+</div>
+</label>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-400 hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="size-10 rounded-full border-2 border-primary/20 p-0.5 overflow-hidden">
+<img alt="Profile" class="rounded-full w-full h-full object-cover" data-alt="Professional user profile portrait headshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0uOq2DmxkKjMwPp1ufkc0uv-Kkwqzk-thLk1VCt5fCYzE2L11sydUClk4JGt-IkGYHAsrranc3vWPnd0LpqgBxzkq_bPIWf0LmzHooEBuoj97x9OwRZt3GEUUHdJLVffSSfh2XbZ2_tXqGfg1m_R9qsYYOvELDLvBa7HLdXMZL3H52udyYcZivnTCSBeo2GdWNV4nKQDlRfH5RkKtfswf8tKH0VOCmlBIINSWVBZ92bQiaKkHkLPNj5XHlOTNvlBTHLbSD_Cchmdz"/>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 flex-col lg:flex-row">
+<!-- Sidebar Navigation -->
+<aside class="w-full lg:w-64 border-r border-slate-800 bg-slate-900 p-6 flex flex-col gap-8">
+<div class="flex flex-col gap-1">
+<h3 class="px-3 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Main Menu</h3>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-semibold" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>My Progress</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">workspace_premium</span>
+<span>Certificates</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span>Saved Cases</span>
+</a>
+</nav>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="px-3 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Preferences</h3>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Help Center</span>
+</a>
+</nav>
+</div>
+<!-- Active Learning Card -->
+<div class="mt-auto p-4 rounded-xl bg-slate-950 text-white relative overflow-hidden group border border-slate-800">
+<div class="absolute inset-0 bg-primary opacity-10 transition-opacity group-hover:opacity-20"></div>
+<div class="relative z-10 flex flex-col gap-2">
+<p class="text-xs font-medium text-slate-400">Level: Senior Analyst</p>
+<p class="text-lg font-bold">Current Streak: 12 Days</p>
+<div class="w-full bg-white/10 h-1.5 rounded-full mt-2">
+<div class="bg-primary h-full rounded-full w-3/4"></div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 p-6 md:p-10 bg-slate-950">
+<div class="max-w-6xl mx-auto space-y-8">
+<!-- Welcome Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div class="space-y-1">
+<h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Welcome back, Alex</h1>
+<p class="text-slate-400 text-lg">Ready to solve your next business challenge?</p>
+</div>
+<div class="flex gap-3">
+<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-primary">token</span>
+<span class="font-bold text-white">1,250 XP</span>
+</div>
+</div>
+</div>
+<!-- Category Tabs -->
+<div class="flex flex-wrap items-center gap-2 border-b border-slate-800">
+<button class="px-6 py-4 text-sm font-bold text-primary border-b-2 border-primary">All Cases</button>
+<button class="px-6 py-4 text-sm font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all">Strategy</button>
+<button class="px-6 py-4 text-sm font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all">Finance</button>
+<button class="px-6 py-4 text-sm font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all">Operations</button>
+<button class="px-6 py-4 text-sm font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all">Marketing</button>
+</div>
+<!-- Case Study Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Case 1: Active -->
+<div class="group bg-slate-900 rounded-xl border border-slate-800 overflow-hidden hover:shadow-2xl hover:border-primary/50 transition-all">
+<div class="relative h-48 w-full">
+<div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent z-10"></div>
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Blue data charts and business strategy meeting visual" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS-6AKYT_xeAKOZugHn1PMtU62KagSkguK6xrVD9l3m8ja5cmVwnzkNDIXceFauHndjo_jTMJ-9J1qy4B1Uld6oP7I9tDg3WYfU33o_2j435vb2aKJ11wmQtc-hle3wWQu_vT2Kx_dZVifXzXzRIzNgzPXbNa17V1AE4KPdl-kQyrfFH7MoIvOCylvhrgr1VU6DfGeC7lezWSIhXc8-8sixytJ6fmh5GCUerSF3ktYtJccZ1Hn5xmRPIT0tBqFB5Fj_zBXiW5Ui4EL"/>
+<div class="absolute top-4 left-4 z-20">
+<span class="px-2 py-1 rounded bg-amber-500 text-white text-[10px] font-bold uppercase">Intermediate</span>
+</div>
+<div class="absolute bottom-4 left-4 z-20 text-white">
+<h3 class="text-xl font-bold">Market Entry Strategy</h3>
+<p class="text-xs opacity-90 text-slate-300">Expansion into Southeast Asia</p>
+</div>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>45 mins</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">group</span>
+<span>2.4k Students</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-primary">Current Progress</span>
+<span class="text-primary">65%</span>
+</div>
+<div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 65%"></div>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+<span>Resume Case</span>
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+</button>
+</div>
+</div>
+<!-- Case 2: New -->
+<div class="group bg-slate-900 rounded-xl border border-slate-800 overflow-hidden hover:shadow-2xl hover:border-primary/50 transition-all">
+<div class="relative h-48 w-full">
+<div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent z-10"></div>
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Logistics warehouse with organized containers and technology" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAG7W_rLCN4NQc1sLzLhTr1R5iyHRQBx5bGhdM3XvA15RHKoIipDquF9af8j9MStQgYTsv4fmPwpH-bTv9BQt3Jeyg3fq0vjOqyus4IW9ZntWz5gz07wotd0CFaUgPckMC1zCAiA8BDs1gYvd3xw1__weXum6tZW-rX2qy4ydBKda7HZXqYHcQIC26Zfqe1FAheM_Eb-PxjrkGbmKhQtnwgnmkGIoi_KPP2Va5qskmdNP8PoeKm-bt4teTueNd_Gq14kV6KMArh3UfN"/>
+<div class="absolute top-4 left-4 z-20">
+<span class="px-2 py-1 rounded bg-rose-500 text-white text-[10px] font-bold uppercase">Advanced</span>
+</div>
+<div class="absolute bottom-4 left-4 z-20 text-white">
+<h3 class="text-xl font-bold">Supply Chain Optimization</h3>
+<p class="text-xs opacity-90 text-slate-300">Global Logistics AI</p>
+</div>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>60 mins</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">group</span>
+<span>1.1k Students</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-slate-500">Not started</span>
+<span class="text-slate-500">0%</span>
+</div>
+<div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full w-0"></div>
+</div>
+</div>
+<button class="w-full bg-slate-800 hover:bg-primary text-slate-200 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 border border-slate-700">
+<span>Start Case</span>
+<span class="material-symbols-outlined text-[20px]">rocket</span>
+</button>
+</div>
+</div>
+<!-- Case 3: Completed -->
+<div class="group bg-slate-900 rounded-xl border border-slate-800 overflow-hidden hover:shadow-2xl hover:border-primary/50 transition-all opacity-80 hover:opacity-100">
+<div class="relative h-48 w-full">
+<div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent z-10"></div>
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Modern digital transformation and collaboration visual" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGJBDwYEfKqxYPqj6dekJ36cxtraEhh_qdAqSB7nXbq6bdf6z2-0WMCGT0DSmIHpeDlkI83Cl5CEoAQLMiGdv4MxIVKCqq6WcCbZ8hMH-Nl_q6nLMegws2rd2XkSyU2RkNLg-9UUR5PBQ7a2zARhEtNT7BS-8cDeRo7fN6dgggs6sQB5zmyf8YuE01ssPOIxpeMpXU_9Sp3-gv-_r2qobwL8ONXtGQ2d74fEw4Xx6HE-JcsiywOsdpOVXXow7hieYjIlT-ukA0E1Wd"/>
+<div class="absolute top-4 left-4 z-20">
+<span class="px-2 py-1 rounded bg-emerald-500 text-white text-[10px] font-bold uppercase">Beginner</span>
+</div>
+<div class="absolute top-4 right-4 z-20">
+<span class="size-6 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</div>
+<div class="absolute bottom-4 left-4 z-20 text-white">
+<h3 class="text-xl font-bold">Digital Transformation</h3>
+<p class="text-xs opacity-90 text-slate-300">Retail to E-commerce</p>
+</div>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>30 mins</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">military_tech</span>
+<span>Badge Earned</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-emerald-500">Completed</span>
+<span class="text-emerald-500">100%</span>
+</div>
+<div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full w-full"></div>
+</div>
+</div>
+<button class="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 border border-slate-800">
+<span>Review Case</span>
+<span class="material-symbols-outlined text-[20px]">history</span>
+</button>
+</div>
+</div>
+<!-- Case 4: New -->
+<div class="group bg-slate-900 rounded-xl border border-slate-800 overflow-hidden hover:shadow-2xl hover:border-primary/50 transition-all">
+<div class="relative h-48 w-full">
+<div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent z-10"></div>
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Marketing growth hacking and startup scaling visual" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA1frodjqZ7fBZuw9vnq0e69ESodW2oh4R3RMsvsOvFBmNY3V2qkT_UVsGOxPccRJHCXymkqp289GDJt1dYMtk3ktfmpcq7yAgteogjMJddG4DacYj0LT0OF1G2e6UX9lIL6O6BKHiUrm3I3VmvabDd3SQSIvp86KPgUowhE0ojd7dZZrL5BpYrWu_bZe9F5ID5utmjqZ9Wa5gDjUIgGIZQ2cU6p1y6TyEZSGct6BtYHfIKMUgN4E7LB_6LletepAWASaYGJhVGWrq"/>
+<div class="absolute top-4 left-4 z-20">
+<span class="px-2 py-1 rounded bg-amber-500 text-white text-[10px] font-bold uppercase">Intermediate</span>
+</div>
+<div class="absolute bottom-4 left-4 z-20 text-white">
+<h3 class="text-xl font-bold">Product Growth</h3>
+<p class="text-xs opacity-90 text-slate-300">SaaS Scaling Strategies</p>
+</div>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>50 mins</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">group</span>
+<span>4.8k Students</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-xs font-bold">
+<span class="text-slate-500">Not started</span>
+<span class="text-slate-500">0%</span>
+</div>
+<div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full w-0"></div>
+</div>
+</div>
+<button class="w-full bg-slate-800 hover:bg-primary text-slate-200 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 border border-slate-700">
+<span>Start Case</span>
+<span class="material-symbols-outlined text-[20px]">rocket</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</div>
+</body></html>

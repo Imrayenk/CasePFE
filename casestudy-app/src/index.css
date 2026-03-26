@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 6px; 
+}
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: #334155; 
+  border-radius: 10px; 
+}
+
+.highlight-yellow { 
+  background-color: rgba(253, 224, 71, 0.2); 
+  border-bottom: 2px solid #eab308; 
+}
+.highlight-blue { 
+  background-color: rgba(147, 197, 253, 0.2); 
+  border-bottom: 2px solid #3b82f6; 
+}
+
+.canvas-grid {
+  background-image: radial-gradient(circle, #334155 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* React Quill Dark Mode Overrides */
+.custom-quill-container .ql-toolbar {
+  border: none !important;
+  border-bottom: 1px solid #1e293b !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.custom-quill-container .ql-container {
+  border: none !important;
+  font-family: inherit !important;
+  font-size: 1.125rem !important; /* text-lg */
+  color: #e2e8f0 !important; /* slate-200 */
+  flex: 1 !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+}
+
+.custom-quill-container .ql-editor {
+  padding: 1.5rem !important;
+}
+
+.custom-quill-container .ql-editor.ql-blank::before {
+  color: #475569 !important; /* slate-600 */
+  font-style: normal !important;
+}
+
+.custom-quill-container .ql-toolbar button {
+  color: #94a3b8 !important; /* slate-400 */
+  border-radius: 0.5rem !important;
+  transition: all 0.2s !important;
+}
+.custom-quill-container .ql-toolbar button:hover {
+  background-color: #1e293b !important; /* slate-800 */
+}
+.custom-quill-container .ql-toolbar .ql-stroke {
+  stroke: #94a3b8 !important; /* slate-400 */
+}
+.custom-quill-container .ql-toolbar button:hover .ql-stroke,
+.custom-quill-container .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #e2e8f0 !important; /* slate-200 */
+}
+.custom-quill-container .ql-toolbar .ql-fill {
+  fill: #94a3b8 !important;
+}
+.custom-quill-container .ql-toolbar button:hover .ql-fill,
+.custom-quill-container .ql-toolbar button.ql-active .ql-fill {
+  fill: #e2e8f0 !important;
+}
+.custom-quill-container .ql-formats {
+  margin-right: 0 !important;
+}

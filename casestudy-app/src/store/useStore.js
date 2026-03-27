@@ -70,6 +70,7 @@ const useStore = create(
               clearTimeout(fallbackTimer);
               set({ authLoading: false });
               get().fetchNotifications();
+              get().fetchUsersDb();
             }).catch((err) => {
               console.error("Profile fetch failed:", err);
               clearTimeout(fallbackTimer);
@@ -88,11 +89,11 @@ const useStore = create(
           if (session?.user) {
             await get().fetchUserProfile(session.user);
             get().fetchNotifications();
+            get().fetchUsersDb();
           } else {
             set({ user: null, notifications: [] });
           }
         });
-        get().fetchUsersDb();
       },
       fetchUserProfile: async (authUser) => {
         const { data: profiles, error } = await supabase
@@ -315,7 +316,7 @@ const useStore = create(
               return true;
           } else {
               console.error("Error adding case:", error);
-              return false;
+              return { error: error.message || "Failed to add case due to a database error." };
           }
       },
       updateCase: async (updatedCase) => {
@@ -334,7 +335,7 @@ const useStore = create(
               return true;
           } else {
               console.error("Error updating case:", error);
-              return false;
+              return { error: error.message || "Failed to update case due to a database error." };
           }
       },
       deleteCase: async (id) => {

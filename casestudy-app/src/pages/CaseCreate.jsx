@@ -29,13 +29,22 @@ const CaseCreate = () => {
     }
   }, [id, cases]);
 
-  const handleSave = async () => {
-    if (!title || !content) return;
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!title || !content || isSaving) return;
+    setIsSaving(true);
     
-    if (id) {
-       const existingCase = cases.find(c => c.id === id);
-       if (existingCase) {
-         await updateCase({
+    try {
+      if (id) {
+         const existingCase = cases.find(c => c.id === id);
+         if (!existingCase) {
+             alert("Cannot find original case to update.");
+             setIsSaving(false);
+             return;
+         }
+         const success = await updateCase({
            ...existingCase,
            title,
            status,
@@ -44,26 +53,34 @@ const CaseCreate = () => {
            attachments,
            updateHistory: [...(existingCase.updateHistory || []), new Date().toISOString()]
          });
-       }
-    } else {
-       const newCase = {
-         id: Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + title.substring(0,2).toUpperCase(),
-         title,
-         description: content.substring(0, 250) + '...',
-         content,
-         date: new Date().toISOString().split('T')[0],
-         status,
-         submissions: 0,
-         attachments
-       };
-       const success = await addCase(newCase);
-       if (!success) {
-           alert("Failed to add case. Check connection or consult logs.");
-           return;
-       }
+         if (!success) {
+            throw new Error("Update failed. You may not have permission.");
+         }
+      } else {
+         const newCase = {
+           id: Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + title.substring(0,2).toUpperCase(),
+           title,
+           description: content.length > 250 ? content.substring(0, 250) + '...' : content,
+           content,
+           date: new Date().toISOString().split('T')[0],
+           status,
+           submissions: 0,
+           attachments
+         };
+         const response = await addCase(newCase);
+         if (response && response.error) {
+             throw new Error(response.error);
+         } else if (response === false) {
+             throw new Error("Add case rejected. Check connection or your permissions.");
+         }
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Failed to save case: " + err.message);
+    } finally {
+      setIsSaving(false);
     }
-    
-    navigate('/dashboard');
   };
 
   return (
@@ -82,10 +99,10 @@ const CaseCreate = () => {
           </div>
           <button 
             onClick={handleSave}
-            disabled={!title || !content}
+            disabled={!title || !content || isSaving}
             className="px-6 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            <Save size={18}/> {id ? 'Update Case' : 'Publish Case'}
+            <Save size={18}/> {isSaving ? 'Saving...' : (id ? 'Update Case' : 'Publish Case')}
           </button>
         </header>
 

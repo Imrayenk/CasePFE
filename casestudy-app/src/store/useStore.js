@@ -52,7 +52,181 @@ const useStore = create(
       authLoading: true, // Initializing auth...
       usersDb: [],
       avatars: {},
-      updateAvatar: (userId, base64Str) => set(s => ({ avatars: { ...s.avatars, [userId]: base64Str } })),
+      updateAvatar: async (userId, base64Str) => {
+          if (!IS_MOCK_MODE) {
+              await supabase.from('profiles').update({ avatar_url: base64Str }).eq('id', userId);
+          }
+          set(s => ({ avatars: { ...s.avatars, [userId]: base64Str } }));
+      },
+      socialData: {},
+      fetchSocialData: async () => {
+          if (IS_MOCK_MODE) return;
+          // Generate a dynamic timestamp to physically bust aggressive browser level GET caching across all devices
+          const cacheBuster = new Date(Date.now() - Math.floor(Math.random() * 10000)).toISOString();
+          
+          const [
+              { data: likesData, error: likesError },
+              { data: commentsData, error: commentsError }
+          ] = await Promise.all([
+              supabase.from('case_likes').select('*').gte('created_at', '2000-01-01T00:00:00Z').neq('created_at', cacheBuster),
+              supabase.from('case_comments').select(`
+                  id, case_id, user_id, text, created_at,
+                  profiles ( full_name, avatar_url )
+              `).gte('created_at', '2000-01-01T00:00:00Z').neq('created_at', cacheBuster)
+          ]);
+
+          if (likesError) console.error("Error fetching likes:", likesError.message || likesError);
+          if (commentsError) console.error("Error fetching comments:", commentsError.message || commentsError);
+
+          if (!likesError && !commentsError) {
+              const newSocialData = {};
+              likesData?.forEach(like => {
+                  if(!newSocialData[like.case_id]) newSocialData[like.case_id] = { likes: [], comments: [] };
+                  // Prevent duplicate likes
+                  if(!newSocialData[like.case_id].likes.includes(like.user_id)) {
+                      newSocialData[like.case_id].likes.push(like.user_id);
+                  }
+              });
+              
+              const avatarsDict = {};
+              commentsData?.forEach(comment => {
+                  if(!newSocialData[comment.case_id]) newSocialData[comment.case_id] = { likes: [], comments: [] };
+                  
+                  // Support array or object return format from Supabase joins
+                  const profile = Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles;
+                  if(profile?.avatar_url) avatarsDict[comment.user_id] = profile.avatar_url;
+                  
+                  newSocialData[comment.case_id].comments.push({
+                      id: comment.id,
+                      userId: comment.user_id,
+                      userName: profile?.full_name || 'User',
+                      text: comment.text,
+                      time: comment.created_at
+                  });
+              });
+
+              set(s => ({ 
+                  socialData: newSocialData,
+                  avatars: { ...s.avatars, ...avatarsDict }
+              }));
+          }
+      },
+      toggleLike: async (caseId, userId) => {
+          const state = get();
+          const hasLiked = (state.socialData[caseId]?.likes || []).includes(userId);
+          
+          // Optimistic UI update
+          set(s => {
+              const fresh = s.socialData[caseId] || { likes: [], comments: [] };
+              return {
+                  socialData: {
+                      ...s.socialData,
+                      [caseId]: {
+                          ...fresh,
+                          likes: hasLiked ? fresh.likes.filter(id => id !== userId) : [...fresh.likes, userId]
+                      }
+                  }
+              };
+          });
+
+          // Background sync
+          if (!IS_MOCK_MODE) {
+              try {
+                  if (hasLiked) {
+                      const { error } = await supabase.from('case_likes').delete().eq('case_id', caseId).eq('user_id', userId).select();
+                      if (error) console.error("Like deletion error:", error);
+                  } else {
+                      const { error } = await supabase.from('case_likes').upsert(
+                          { case_id: caseId, user_id: userId }, 
+                          { onConflict: 'case_id,user_id', ignoreDuplicates: true }
+                      ).select();
+                      if (error) console.error("Like insertion error:", error);
+                  }
+              } catch (err) {
+                  console.error("Execution error during like sync:", err);
+              }
+          }
+      },
+      addComment: async (caseId, commentObj) => {
+          let newComment = { ...commentObj, id: Date.now().toString(), time: new Date().toISOString() };
+          
+          // Optimistic UI update inside set to guarantee fresh state tracking
+          set(s => {
+              const fresh = s.socialData[caseId] || { likes: [], comments: [] };
+              return {
+                  socialData: {
+                      ...s.socialData,
+                      [caseId]: {
+                          ...fresh,
+                          comments: [...fresh.comments, newComment]
+                      }
+                  }
+              };
+          });
+
+          // Background sync
+          if (!IS_MOCK_MODE) {
+              const { data, error } = await supabase.from('case_comments').insert([{
+                  case_id: caseId,
+                  user_id: commentObj.userId,
+                  text: commentObj.text
+              }]).select();
+              
+              if (error) {
+                  console.error("Comment insertion error:", error);
+                  // Rollback on failure
+                  set(s => {
+                      const fresh = s.socialData[caseId] || { likes: [], comments: [] };
+                      return {
+                          socialData: {
+                              ...s.socialData,
+                              [caseId]: { ...fresh, comments: fresh.comments.filter(c => c.id !== newComment.id) }
+                          }
+                      };
+                  });
+                  return;
+              }
+              
+              if (data && data.length > 0) {
+                  set(s => {
+                      const caseSocial = s.socialData[caseId];
+                      if (!caseSocial) return s;
+                      return {
+                          socialData: {
+                              ...s.socialData,
+                              [caseId]: {
+                                  ...caseSocial,
+                                  comments: caseSocial.comments.map(c => 
+                                      c.id === newComment.id ? { ...c, id: data[0].id, time: data[0].created_at } : c
+                                  )
+                              }
+                          }
+                      };
+                  });
+              }
+          }
+      },
+      deleteComment: async (caseId, commentId) => {
+          // Optimistic UI update tracking fresh state
+          set(s => {
+              const fresh = s.socialData[caseId] || { likes: [], comments: [] };
+              return {
+                  socialData: {
+                      ...s.socialData,
+                      [caseId]: {
+                          ...fresh,
+                          comments: fresh.comments.filter(c => c.id !== commentId)
+                      }
+                  }
+              };
+          });
+
+          // Background sync
+          if (!IS_MOCK_MODE) {
+              supabase.from('case_comments').delete().eq('id', commentId)
+                  .then(({error}) => { if (error) console.error("Comment deletion error:", error); });
+          }
+      },
       isDarkMode: true,
       toggleDarkMode: () => set(s => {
           const newMode = !s.isDarkMode;
@@ -70,41 +244,34 @@ const useStore = create(
           set({ authLoading: false });
           return;
         }
-        // Rescue timeout: if DB hangs, force load
-        const fallbackTimer = setTimeout(() => {
-            if (get().authLoading) {
-                console.warn("Auth check timed out, forcing load completion.");
-                set({ authLoading: false });
-            }
-        }, 5000);
 
+        // Force UI load immediately from purely local persisted state, bypassing all potential network hangs
+        set({ authLoading: false }); 
+
+        // Fetch initial session asynchronously without halting the UI, preventing 5s timeouts
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session?.user) {
-            get().fetchUserProfile(session.user).then(() => {
-              clearTimeout(fallbackTimer);
-              set({ authLoading: false });
-              get().fetchNotifications();
-              get().fetchUsersDb();
-            }).catch((err) => {
-              console.error("Profile fetch failed:", err);
-              clearTimeout(fallbackTimer);
-              set({ authLoading: false });
-            });
-          } else {
-            clearTimeout(fallbackTimer);
-            set({ authLoading: false });
+            get().fetchUserProfile(session.user).catch((err) => console.error("Profile fallback fetch failed:", err));
+            get().fetchNotifications();
+            get().fetchUsersDb();
+            get().fetchSocialData();
           }
         }).catch((err) => {
           console.error("Session fetch failed:", err);
-          clearTimeout(fallbackTimer);
-          set({ authLoading: false });
+          set({ authLoading: false }); // Unblock UI on error
         });
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          if (session?.user) {
+
+        // Listen for active login/logout triggers
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          // Ignore INITIAL_SESSION to prevent duplicate fetch requests that choke the network queue
+          if (event === 'INITIAL_SESSION') return;
+          
+          if (session?.user && event === 'SIGNED_IN') {
             await get().fetchUserProfile(session.user);
             get().fetchNotifications();
             get().fetchUsersDb();
-          } else {
+            get().fetchSocialData();
+          } else if (event === 'SIGNED_OUT') {
             set({ user: null, notifications: [] });
           }
         });
@@ -122,7 +289,10 @@ const useStore = create(
         
         if (profiles && profiles.length > 0) {
           const profile = profiles[0];
-          set({ user: { id: profile.id, email: authUser.email, name: profile.full_name, role: profile.role } });
+          set(s => ({ 
+              user: { id: profile.id, email: authUser.email, name: profile.full_name, role: profile.role },
+              avatars: profile.avatar_url ? { ...s.avatars, [profile.id]: profile.avatar_url } : s.avatars
+          }));
         } else {
           // Automatic profile creation for users signing in via OAuth (like Google)
           const name = authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User';
@@ -144,19 +314,67 @@ const useStore = create(
          const { data, error } = await supabase.rpc('get_users_with_emails');
          if (data && !error) {
              const mappedUsers = data.map(p => ({ id: p.id, name: p.full_name, role: p.role, email: p.email }));
-             set({ usersDb: mappedUsers });
+             
+             // Extract avatars into dictionary
+             const avatarsDict = {};
+             data.forEach(p => {
+                 if(p.avatar_url) avatarsDict[p.id] = p.avatar_url;
+             });
+
+             set(s => ({ 
+                 usersDb: mappedUsers,
+                 avatars: { ...s.avatars, ...avatarsDict }
+             }));
          } else {
              // Fallback to regular profile fetch if RPC is not deployed yet
-             const { data: fallbackData } = await supabase.from('profiles').select('id, full_name, role');
+             const { data: fallbackData } = await supabase.from('profiles').select('id, full_name, role, avatar_url');
              if (fallbackData) {
-                 set({ usersDb: fallbackData.map(p => ({ id: p.id, name: p.full_name, role: p.role, email: 'hidden@supabase.local' })) });
+                 const avatarsDict = {};
+                 fallbackData.forEach(p => {
+                     if(p.avatar_url) avatarsDict[p.id] = p.avatar_url;
+                 });
+                 set(s => ({ 
+                     usersDb: fallbackData.map(p => ({ id: p.id, name: p.full_name, role: p.role, email: 'hidden@supabase.local' })),
+                     avatars: { ...s.avatars, ...avatarsDict }
+                 }));
              }
          }
       },
       signIn: async (email, password) => {
         if (IS_MOCK_MODE) return { success: false, error: 'Database connected, mock mode disabled.' };
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return { success: false, error: error.message };
+        
+        let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        
+        // Seamless fallback: If user doesn't exist, automatically sign them up!
+        if (error && error.message.toLowerCase().includes('credential')) {
+            const signUpResponse = await supabase.auth.signUp({
+                email, password, options: { data: { full_name: email.split('@')[0] } }
+            });
+            
+            if (signUpResponse.data?.user && !signUpResponse.error) {
+                // Pre-provision their default learner profile
+                await supabase.from('profiles').insert([
+                    { id: signUpResponse.data.user.id, role: 'learner', full_name: email.split('@')[0] }
+                ]);
+                get().fetchUsersDb();
+                
+                // If Supabase requires email confirmation, the session will be null!
+                if (!signUpResponse.data.session) {
+                    return { success: false, error: "Please disable 'Confirm Email' in your Supabase Auth settings, or check your inbox to confirm!" };
+                }
+                
+                // Proceed with the new auth session
+                data = signUpResponse.data;
+                error = null;
+            } else {
+                return { success: false, error: signUpResponse.error?.message || error.message };
+            }
+        } else if (error) {
+            if (error.message.toLowerCase().includes("email not confirmed")) {
+                return { success: false, error: "DEVELOPER FIX: Go to Supabase Dashboard -> Authentication -> Providers -> Email -> Turn OFF 'Confirm Email'." };
+            }
+            return { success: false, error: error.message };
+        }
         
         if (data?.user) {
            await get().fetchUserProfile(data.user);
@@ -180,7 +398,10 @@ const useStore = create(
         const { data, error } = await supabase.auth.signUp({
             email, password, options: { data: { full_name: name } }
         });
-        if (error) return { success: false, error: error.message };
+        
+        if (error) {
+            return { success: false, error: error.message };
+        }
         
         if (data?.user) {
             const { error: profileError } = await supabase.from('profiles').insert([
@@ -188,6 +409,11 @@ const useStore = create(
             ]);
             if (profileError) return { success: false, error: "Profile creation failed: " + profileError.message };
             get().fetchUsersDb();
+            
+            if (!data.session) {
+                return { success: false, error: "DEVELOPER FIX: Go to Supabase Dashboard -> Authentication -> Providers -> Email -> Turn OFF 'Confirm Email'." };
+            }
+            
             return { success: true };
         }
         return { success: false, error: 'Unknown signup error.'};
@@ -298,7 +524,12 @@ const useStore = create(
       cases: [],
       fetchCases: async () => {
          if (IS_MOCK_MODE) return;
-         const { data, error } = await supabase.from('cases').select('*').order('created_at', { ascending: false });
+         
+         const cacheBuster = new Date(Date.now() - Math.floor(Math.random() * 10000)).toISOString();
+         const { data, error } = await supabase.from('cases').select('*')
+              .gte('created_at', '2000-01-01T00:00:00Z').neq('created_at', cacheBuster)
+              .order('created_at', { ascending: false });
+              
          if (data && !error) {
              const mappedCases = data.map(c => ({
                  id: c.id,
@@ -311,6 +542,9 @@ const useStore = create(
                  updateHistory: c.update_history || []
              }));
              set({ cases: mappedCases });
+             
+             // Globally resync social data whenever cases are reloaded from the Dashboard
+             get().fetchSocialData();
          }
       },
       addCase: async (newCase) => {
@@ -789,7 +1023,8 @@ ${caseContent}
         usersDb: state.usersDb,
         cases: state.cases,
         isDarkMode: state.isDarkMode,
-        avatars: state.avatars
+        avatars: state.avatars,
+        socialData: state.socialData
       }),
     }
   )

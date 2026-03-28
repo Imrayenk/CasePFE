@@ -1,7 +1,91 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { BookOpen, Clock, FileText, Activity, Users, LayoutGrid, Edit2, History, Trash2, GraduationCap } from 'lucide-react';
+import { BookOpen, Clock, FileText, Activity, Users, LayoutGrid, Edit2, History, Trash2, GraduationCap, ThumbsUp, MessageSquare, Send } from 'lucide-react';
+
+const CaseSocialBar = ({ c }) => {
+    const { user, socialData, toggleLike, addComment, deleteComment, avatars } = useStore();
+    const [expanded, setExpanded] = useState(false);
+    const [cmtText, setCmtText] = useState('');
+
+    const social = socialData[c.id] || { likes: [], comments: [] };
+    const likesCount = social.likes.length;
+    const commentsCount = social.comments.length;
+    const isLiked = social.likes.includes(user?.id);
+
+    const handleLike = (e) => {
+        e.stopPropagation();
+        if(user) toggleLike(c.id, user.id);
+    };
+
+    const submitCmt = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if(!cmtText.trim() || !user) return;
+        addComment(c.id, { userId: user.id, userName: user.name, text: cmtText });
+        setCmtText('');
+    };
+
+    return (
+        <div className="pt-3 mt-3 border-t border-slate-800/50 flex flex-col gap-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-4">
+                <button onClick={handleLike} className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-md transition-colors ${isLiked ? 'bg-primary/20 text-primary' : 'text-slate-400 hover:bg-slate-800'}`}>
+                    <ThumbsUp size={14} className={isLiked ? 'fill-current' : ''} />
+                    {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-md transition-colors ${expanded ? 'bg-slate-800 text-slate-200' : 'text-slate-400 hover:bg-slate-800'}`}>
+                    <MessageSquare size={14} className={expanded ? 'fill-current opacity-50' : ''} />
+                    {commentsCount} {commentsCount === 1 ? 'Comment' : 'Comments'}
+                </button>
+            </div>
+            {expanded && (
+                <div className="flex flex-col gap-3 pt-3 border-t border-slate-800/50">
+                    <div className="max-h-32 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                        {commentsCount === 0 ? (
+                            <p className="text-xs text-slate-500 italic text-center py-2">No comments yet. Be the first!</p>
+                        ) : (
+                            social.comments.map(cmt => (
+                                <div key={cmt.id} className="bg-slate-800/40 p-2 rounded flex gap-2 group relative">
+                                    <div className="size-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden">
+                                        {avatars?.[cmt.userId] ? <img src={avatars[cmt.userId]} className="w-full h-full object-cover"/> : cmt.userName?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 pr-4">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="text-xs font-bold text-slate-300">{cmt.userName}</span>
+                                            <span className="text-[9px] text-slate-500">{new Date(cmt.time).toLocaleDateString()}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-400">{cmt.text}</p>
+                                    </div>
+                                    {user?.id === cmt.userId && (
+                                        <button 
+                                            type="button"
+                                            disabled={!cmt.id.includes('-')}
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteComment(c.id, cmt.id); }}
+                                            className={`absolute top-2 right-2 transition-opacity p-1 z-10 ${
+                                                !cmt.id.includes('-') 
+                                                    ? 'text-slate-700 opacity-50 cursor-wait' 
+                                                    : 'text-slate-500 hover:text-rose-500 opacity-0 group-hover:opacity-100'
+                                            }`}
+                                            title={!cmt.id.includes('-') ? "Saving..." : "Delete comment"}
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <form onSubmit={submitCmt} className="flex items-center gap-2">
+                        <input type="text" value={cmtText} onChange={e => setCmtText(e.target.value)} onClick={e => e.stopPropagation()} placeholder="Add a comment..." className="flex-1 bg-slate-800 border border-slate-700 rounded text-xs px-2 py-1.5 focus:border-primary focus:outline-none text-slate-200"/>
+                        <button type="submit" disabled={!cmtText.trim()} className="p-1.5 bg-primary text-white rounded disabled:opacity-50 transition-opacity">
+                            <Send size={12} />
+                        </button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -13,8 +97,16 @@ const Dashboard = () => {
   }, [activeView]);
 
   useEffect(() => {
+    // Initial fetch
     fetchCases();
     fetchSubmissions();
+
+    // Seamless real-time polling: silently update the dashboard data every 10 seconds
+    const intervalId = setInterval(() => {
+      fetchCases();
+    }, 10000);
+
+    return () => clearInterval(intervalId);
   }, [fetchCases, fetchSubmissions]);
 
   const exportCasesCSV = () => {
@@ -177,6 +269,7 @@ const Dashboard = () => {
                         <span className="text-sm font-medium text-blue-400">{subCount}</span>
                       </div>
                     </div>
+                    <CaseSocialBar c={c} />
                   </div>
                   );
                 })}
@@ -383,6 +476,7 @@ const Dashboard = () => {
                     </button>
                   </div>
                 )}
+                <CaseSocialBar c={c} />
               </div>
              );
           })}

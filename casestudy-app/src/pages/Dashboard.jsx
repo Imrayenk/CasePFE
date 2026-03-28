@@ -5,7 +5,7 @@ import { BookOpen, Clock, FileText, Activity, Users, LayoutGrid, Edit2, History,
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { currentCase, user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions } = useStore();
+  const { currentCase, user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions, avatars } = useStore();
   const [activeView, setActiveView] = useState(() => localStorage.getItem('dashboardActiveView') || 'cases');
 
   useEffect(() => {
@@ -261,8 +261,12 @@ const Dashboard = () => {
                           <tr key={learner.id} className="hover:bg-slate-800/30 transition-colors">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="size-9 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold shrink-0">
-                                  {learner.name?.charAt(0).toUpperCase()}
+                                <div className="size-9 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden border border-primary/20">
+                                  {avatars?.[learner.id] ? (
+                                      <img src={avatars[learner.id]} alt="Profile" className="w-full h-full object-cover" />
+                                  ) : (
+                                      learner.name?.charAt(0).toUpperCase()
+                                  )}
                                 </div>
                                 <span className="font-semibold text-slate-200">{learner.name}</span>
                               </div>

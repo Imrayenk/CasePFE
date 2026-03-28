@@ -4,7 +4,7 @@ import useStore from '../store/useStore';
 import { Bell, UserCircle, BriefcaseMedical, X, LogOut } from 'lucide-react';
 
 const Layout = () => {
-  const { user, currentCase, signOut, notifications, markNotificationsAsRead, clearNotifications } = useStore();
+  const { user, currentCase, signOut, notifications, markNotificationsAsRead, clearNotifications, avatars } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   const isWorkspace = location.pathname.includes('/workspace');
@@ -92,9 +92,13 @@ const Layout = () => {
             )}
           </div>
           <Link to="/profile" className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors">
-             <span className="text-sm font-semibold px-2 text-slate-200">{user?.name}</span>
-             <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden text-primary">
-               <UserCircle size={24} />
+             <span className="text-sm font-semibold px-2 text-slate-200 uppercase tracking-wide">{user?.name}</span>
+             <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden text-primary shrink-0">
+               {user?.id && avatars?.[user.id] ? (
+                   <img src={avatars[user.id]} alt="Profile" className="w-full h-full object-cover" />
+               ) : (
+                   <UserCircle size={24} />
+               )}
              </div>
           </Link>
         </div>

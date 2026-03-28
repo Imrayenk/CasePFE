@@ -3,9 +3,70 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-app: 15 23 42; 
+    --bg-app-darker: 2 6 23; 
+    --color-slate-50: 248 250 252;
+    --color-slate-100: 241 245 249;
+    --color-slate-200: 226 232 240;
+    --color-slate-300: 203 213 225;
+    --color-slate-400: 148 163 184;
+    --color-slate-500: 100 116 139;
+    --color-slate-600: 71 85 105;
+    --color-slate-700: 51 65 85;
+    --color-slate-800: 30 41 59;
+    --color-slate-900: 15 23 42;
+    --color-slate-950: 2 6 23;
+    --color-text-white: 255 255 255;
+  }
+
+  html.light, body.light {
+    --bg-app: 248 250 252; 
+    --bg-app-darker: 241 245 249; 
+    
+    --color-slate-950: 248 250 252; 
+    --color-slate-900: 255 255 255; 
+    --color-slate-800: 241 245 249; 
+    --color-slate-700: 226 232 240; 
+    --color-slate-600: 203 213 225; 
+    --color-slate-500: 148 163 184; 
+    --color-slate-400: 100 116 139; 
+    --color-slate-300: 71 85 105;   
+    --color-slate-200: 51 65 85;    
+    --color-slate-100: 15 23 42;    
+    --color-slate-50: 2 6 23;      
+    --color-text-white: 15 23 42;   
+  }
+
   body {
     @apply font-sans;
   }
+}
+
+html.light .text-white {
+  color: rgb(var(--color-text-white)) !important;
+}
+
+html.light .bg-primary.text-white, 
+html.light .bg-primary .text-white {
+  color: #ffffff !important;
+}
+
+/* Hard exceptions for accent colors to ensure contrast in light mode */
+html.light .text-emerald-400, html.light .text-emerald-500 {
+  color: #047857 !important; /* emerald-700 */
+}
+html.light .text-blue-400, html.light .text-blue-500 {
+  color: #1d4ed8 !important; /* blue-700 */
+}
+html.light .text-amber-400, html.light .text-amber-500 {
+  color: #b45309 !important; /* amber-700 */
+}
+html.light .text-purple-400, html.light .text-purple-500 {
+  color: #7e22ce !important; /* purple-700 */
+}
+html.light .text-rose-400, html.light .text-rose-500 {
+  color: #be123c !important; /* rose-700 */
 }
 
 .custom-scrollbar::-webkit-scrollbar { 
@@ -85,4 +146,23 @@
 }
 .custom-quill-container .ql-formats {
   margin-right: 0 !important;
+}
+
+/* Google Translate Overrides */
+iframe.skiptranslate {
+  display: none !important;
+}
+body {
+  top: 0 !important;
+}
+#goog-gt-tt, .goog-te-balloon-frame, .goog-tooltip {
+  display: none !important;
+}
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+font {
+  background-color: transparent !important;
+  box-shadow: none !important;
 }

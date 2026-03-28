@@ -51,7 +51,21 @@ const useStore = create(
       user: null, // Start unauthenticated
       authLoading: true, // Initializing auth...
       usersDb: [],
+      avatars: {},
+      updateAvatar: (userId, base64Str) => set(s => ({ avatars: { ...s.avatars, [userId]: base64Str } })),
+      isDarkMode: true,
+      toggleDarkMode: () => set(s => {
+          const newMode = !s.isDarkMode;
+          document.documentElement.classList.toggle('light', !newMode);
+          document.documentElement.classList.toggle('dark', newMode);
+          return { isDarkMode: newMode };
+      }),
       initAuth: () => {
+        // Sync theme on load
+        const stateTheme = get().isDarkMode;
+        document.documentElement.classList.toggle('light', !stateTheme);
+        document.documentElement.classList.toggle('dark', stateTheme !== false);
+
         if (IS_MOCK_MODE) {
           set({ authLoading: false });
           return;
@@ -773,7 +787,9 @@ ${caseContent}
         submissions: state.submissions,
         user: state.user,
         usersDb: state.usersDb,
-        cases: state.cases
+        cases: state.cases,
+        isDarkMode: state.isDarkMode,
+        avatars: state.avatars
       }),
     }
   )

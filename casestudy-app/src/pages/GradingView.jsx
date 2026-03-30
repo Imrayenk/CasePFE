@@ -63,6 +63,8 @@ const GradingView = () => {
     }
   }, [id, submission]);
 
+  const [saveStatus, setSaveStatus] = useState({ status: 'idle', message: '' });
+
   if (!submission) {
     return (
         <div className="flex-1 p-8 bg-background-dark flex items-center justify-center">
@@ -73,8 +75,6 @@ const GradingView = () => {
         </div>
     );
   }
-
-  const [saveStatus, setSaveStatus] = useState({ status: 'idle', message: '' });
 
   const handleOverride = async () => {
     setSaveStatus({ status: 'saving', message: '' });

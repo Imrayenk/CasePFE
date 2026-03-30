@@ -12,7 +12,7 @@ const quillModules = {
   ]
 };
 
-const SummaryEditor = ({ setActiveTab }) => {
+const SummaryEditor = () => {
   const navigate = useNavigate();
   const { summaryText, setSummaryText, keywords, removeKeyword, submitAssignment, saveDraft, generateDraft, isGeneratingDraft, extractConceptsAI, isExtractingConcepts } = useStore();
   
@@ -45,7 +45,7 @@ const SummaryEditor = ({ setActiveTab }) => {
     return () => clearTimeout(timer);
   }, [summaryText, keywords, wordCount, saveDraft]);
 
-  const handleTextChange = (content, delta, source, editor) => {
+  const handleTextChange = (content) => {
     setSummaryText(content);
     setIsSaving(true);
     setTimeout(() => setIsSaving(false), 1500); 

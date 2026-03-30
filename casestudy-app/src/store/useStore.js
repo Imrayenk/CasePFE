@@ -3,24 +3,7 @@ import { persist } from 'zustand/middleware';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase, IS_MOCK_MODE } from '../lib/supabase';
 
-const initialCaseData = `
-# Memorandum of Compliance Review
 
-To: Executive Oversight Committee
-From: Internal Compliance Division
-Date: October 24, 2023
-
-## 1. Executive Summary
-The following document details the quarterly compliance audit for the fiscal year 2023. This review focuses on regulatory adherence within the international shipping department. Preliminary findings suggest a robust framework, though several minor discrepancies in documentation logs were noted during the mid-September peak.
-
-## 2. Audit Methodology
-Our team utilized a randomized sampling technique, analyzing over 4,500 individual transaction records spanning three jurisdictions. Each record was vetted against ISO 27001 standards and local regulatory requirements. The evaluation period covered June 1 through September 30.
-
-## 3. Observations
-During the audit, it was observed that the automated tracking system experienced a 4-hour downtime on August 12. During this period, manual ledger entries were utilized. While generally accurate, the level of detail in the manual logs does not fully meet the enhanced transparency requirements introduced in the Q1 policy update.
-
-Furthermore, training sessions for new staff members were found to be 15% behind schedule, potentially leading to the operational bottlenecks observed in the Northern Region branch. It is recommended that these sessions are expedited before the holiday rush.
-`;
 const initialKeywords = [
   { id: 'k1', text: 'quarterly compliance audit for the fiscal year 2023', category: 'yellow' },
   { id: 'k2', text: 'minor discrepancies in documentation logs', category: 'blue' },
@@ -245,20 +228,25 @@ const useStore = create(
           return;
         }
 
-        // Force UI load immediately from purely local persisted state, bypassing all potential network hangs
-        set({ authLoading: false }); 
-
-        // Fetch initial session asynchronously without halting the UI, preventing 5s timeouts
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        // Fetch initial session safely, ensuring loading screen protects routes until true auth state is known
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
           if (session?.user) {
-            get().fetchUserProfile(session.user).catch((err) => console.error("Profile fallback fetch failed:", err));
+            try {
+               await get().fetchUserProfile(session.user);
+            } catch (err) {
+               console.error("Profile fallback fetch failed:", err);
+            }
             get().fetchNotifications();
             get().fetchUsersDb();
             get().fetchSocialData();
+          } else {
+            // Strictly wipe ghost sessions if Supabase token is genuinely expired/missing
+            set({ user: null });
           }
+          set({ authLoading: false });
         }).catch((err) => {
           console.error("Session fetch failed:", err);
-          set({ authLoading: false }); // Unblock UI on error
+          set({ user: null, authLoading: false }); // Unblock UI and clear ghosts on error
         });
 
         // Listen for active login/logout triggers
@@ -345,31 +333,7 @@ const useStore = create(
         
         let { data, error } = await supabase.auth.signInWithPassword({ email, password });
         
-        // Seamless fallback: If user doesn't exist, automatically sign them up!
-        if (error && error.message.toLowerCase().includes('credential')) {
-            const signUpResponse = await supabase.auth.signUp({
-                email, password, options: { data: { full_name: email.split('@')[0] } }
-            });
-            
-            if (signUpResponse.data?.user && !signUpResponse.error) {
-                // Pre-provision their default learner profile
-                await supabase.from('profiles').insert([
-                    { id: signUpResponse.data.user.id, role: 'learner', full_name: email.split('@')[0] }
-                ]);
-                get().fetchUsersDb();
-                
-                // If Supabase requires email confirmation, the session will be null!
-                if (!signUpResponse.data.session) {
-                    return { success: false, error: "Please disable 'Confirm Email' in your Supabase Auth settings, or check your inbox to confirm!" };
-                }
-                
-                // Proceed with the new auth session
-                data = signUpResponse.data;
-                error = null;
-            } else {
-                return { success: false, error: signUpResponse.error?.message || error.message };
-            }
-        } else if (error) {
+        if (error) {
             if (error.message.toLowerCase().includes("email not confirmed")) {
                 return { success: false, error: "DEVELOPER FIX: Go to Supabase Dashboard -> Authentication -> Providers -> Email -> Turn OFF 'Confirm Email'." };
             }
@@ -430,6 +394,14 @@ const useStore = create(
              if (error) { console.error("Profile update error", error); return; }
          }
          set({ user: { ...state.user, name: newName } });
+         get().fetchUsersDb();
+      },
+      updateUserRole: async (userId, newRole) => {
+         if (!IS_MOCK_MODE) {
+             const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+             if (error) { console.error("Role update error", error); return; }
+         }
+         // Immediate refetch to reflect changes
          get().fetchUsersDb();
       },
 
@@ -830,7 +802,7 @@ ${caseContent}
         nodes: state.nodes.filter(n => n.id !== nodeId),
         edges: state.edges.filter(e => e.source !== nodeId && e.target !== nodeId)
       })),
-      onNodesChange: (changes) => {
+      onNodesChange: () => {
         // Since we import from @xyflow/react later, we'll apply them in the component itself
         // but we can also store the direct arrays here
       },
@@ -1020,8 +992,6 @@ ${caseContent}
         caseWorkspaces: state.caseWorkspaces,
         submissions: state.submissions,
         user: state.user,
-        usersDb: state.usersDb,
-        cases: state.cases,
         isDarkMode: state.isDarkMode,
         avatars: state.avatars,
         socialData: state.socialData

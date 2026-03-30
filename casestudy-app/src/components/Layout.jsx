@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { Bell, UserCircle, BriefcaseMedical, X, LogOut } from 'lucide-react';
+import { Bell, UserCircle, BriefcaseMedical, X } from 'lucide-react';
 
 const Layout = () => {
-  const { user, currentCase, signOut, notifications, markNotificationsAsRead, clearNotifications, avatars } = useStore();
+  const { user, currentCase, notifications, markNotificationsAsRead, clearNotifications, avatars } = useStore();
   const location = useLocation();
-  const navigate = useNavigate();
   const isWorkspace = location.pathname.includes('/workspace');
 
   const [showNotifications, setShowNotifications] = useState(false);

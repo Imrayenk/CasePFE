@@ -10,6 +10,8 @@ import CaseCreate from './pages/CaseCreate';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
+import Home from './pages/Home';
+import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   useEffect(() => {
@@ -19,12 +21,20 @@ function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         
+        {/* Admin Only Route */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/" element={<Layout />}>
+            <Route path="admin" element={<AdminDashboard />} />
+          </Route>
+        </Route>
+
+        {/* Regular Authenticated Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="workspace/:id" element={<Workspace />} />
             <Route path="results/:id" element={<Results />} />

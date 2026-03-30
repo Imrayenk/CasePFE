@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { BriefcaseMedical, UserPlus, MailCheck } from 'lucide-react';
 
 const Signup = () => {
-  const navigate = useNavigate();
   const { signUp } = useStore();
   
   const [name, setName] = useState('');

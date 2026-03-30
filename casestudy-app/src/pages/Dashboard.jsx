@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { BookOpen, Clock, FileText, Activity, Users, LayoutGrid, Edit2, History, Trash2, GraduationCap, ThumbsUp, MessageSquare, Send } from 'lucide-react';
 
@@ -89,7 +89,7 @@ const CaseSocialBar = ({ c }) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { currentCase, user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions, avatars } = useStore();
+  const { user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions, avatars } = useStore();
   const [activeView, setActiveView] = useState(() => localStorage.getItem('dashboardActiveView') || 'cases');
 
   useEffect(() => {
@@ -143,7 +143,12 @@ const Dashboard = () => {
     document.body.removeChild(link);
   };
 
-  if (user.role === 'teacher') {
+  const role = user?.role?.toLowerCase() || '';
+  if (role === 'admin' || role === 'administrator') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (user?.role === 'teacher') {
     return (
       <div className="flex-1 p-8 overflow-y-auto bg-background-dark">
         <div className="max-w-6xl mx-auto space-y-8 mt-6">

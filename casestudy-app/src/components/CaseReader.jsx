@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import useStore from '../store/useStore';
 import { Search, Download, ZoomIn, ZoomOut, Copy, Edit3, Paperclip, FileText, List, ChevronRight, ChevronUp, ChevronDown, Settings } from 'lucide-react';
 

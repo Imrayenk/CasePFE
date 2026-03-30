@@ -10,9 +10,7 @@ import {
   Handle,
   Position,
   getBezierPath,
-  BaseEdge,
-  EdgeLabelRenderer,
-  useReactFlow
+  BaseEdge
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import useStore from '../store/useStore';
@@ -117,7 +115,6 @@ const NodeContent = ({ id, data, typeColor, typeLabel, textareaClassName = "", t
 
 // --- Custom Edge with Deletion ---
 const DeletableEdge = ({
-  id,
   sourceX,
   sourceY,
   targetX,
@@ -270,7 +267,7 @@ const edgeTypes = {
 };
 
 // --- Main Component ---
-const ConceptMapper = ({ setActiveTab }) => {
+const ConceptMapper = () => {
   const { nodes, edges, setNodes, setEdges, deleteNode, saveDraft, keywords } = useStore();
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);

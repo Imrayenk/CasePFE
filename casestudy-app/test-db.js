@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://iovbquiconpptsipcfel.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvdmJxdWljb25wcHRzaXBjZmVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjM2NzYsImV4cCI6MjA4OTI5OTY3Nn0.QdpXxQwSFuypRT8Sm7yA6_6neutC_iI1jh4mnyFUY9g';
+const supabaseUrl = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function testInsert() {

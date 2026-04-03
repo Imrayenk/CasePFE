@@ -89,7 +89,7 @@ const CaseSocialBar = ({ c }) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions, avatars } = useStore();
+  const { user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions, avatars, fetchSocialData, fetchUsersDb } = useStore();
   const [activeView, setActiveView] = useState(() => localStorage.getItem('dashboardActiveView') || 'cases');
 
   useEffect(() => {
@@ -100,14 +100,12 @@ const Dashboard = () => {
     // Initial fetch
     fetchCases();
     fetchSubmissions();
-
-    // Seamless real-time polling: silently update the dashboard data every 10 seconds
-    const intervalId = setInterval(() => {
-      fetchCases();
-    }, 10000);
-
-    return () => clearInterval(intervalId);
-  }, [fetchCases, fetchSubmissions]);
+    fetchSocialData();
+    
+    if (user?.role === 'teacher') {
+       fetchUsersDb();
+    }
+  }, [fetchCases, fetchSubmissions, fetchSocialData, fetchUsersDb, user?.role]);
 
   const exportCasesCSV = () => {
     if (!cases || cases.length === 0) return;

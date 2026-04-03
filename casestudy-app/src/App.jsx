@@ -15,7 +15,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   useEffect(() => {
-    useStore.getState().initAuth();
+    useStore.getState().initializeSession();
   }, []);
 
   return (
@@ -24,6 +24,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+
         
         {/* Admin Only Route */}
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

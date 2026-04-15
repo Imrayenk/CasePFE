@@ -87,10 +87,48 @@ const CaseSocialBar = ({ c }) => {
     );
 };
 
+const DeleteModal = ({ isOpen, onClose, onConfirm, isDeleting }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 text-rose-500">
+          <Trash2 size={24} />
+          <h3 className="text-xl font-bold">Delete Case</h3>
+        </div>
+        <p className="text-slate-300 text-sm">
+          Are you sure you want to delete this case? This action cannot be undone and will permanently remove all related submissions, comments, and likes.
+        </p>
+        <div className="flex justify-end gap-3 mt-4">
+          <button onClick={onClose} disabled={isDeleting} className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-slate-200 transition-colors">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={isDeleting} className="px-4 py-2 text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50">
+            {isDeleting ? "Deleting..." : "Yes, Delete Case"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, submissions, cases, deleteCase, usersDb, fetchCases, fetchSubmissions, avatars, fetchSocialData, fetchUsersDb } = useStore();
   const [activeView, setActiveView] = useState(() => localStorage.getItem('dashboardActiveView') || 'cases');
+  const [caseToDelete, setCaseToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+      if (!caseToDelete) return;
+      setIsDeleting(true);
+      const res = await deleteCase(caseToDelete);
+      if (res && !res.success) {
+          alert(res.error || "Failed to delete case.");
+      }
+      setIsDeleting(false);
+      setCaseToDelete(null);
+  };
 
   useEffect(() => {
     localStorage.setItem('dashboardActiveView', activeView);
@@ -148,16 +186,22 @@ const Dashboard = () => {
 
   if (user?.role === 'teacher') {
     return (
-      <div className="flex-1 p-8 overflow-y-auto bg-background-dark">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-background-dark h-full min-h-0">
+        <DeleteModal 
+            isOpen={!!caseToDelete} 
+            onClose={() => setCaseToDelete(null)} 
+            onConfirm={confirmDelete} 
+            isDeleting={isDeleting} 
+        />
         <div className="max-w-6xl mx-auto space-y-8 mt-6">
-          <header className="flex items-center justify-between">
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
               <h1 className="text-3xl font-bold text-slate-100">Teacher Dashboard</h1>
               <p className="text-slate-400">Manage case studies and review student submissions.</p>
             </div>
             <button 
               onClick={() => navigate('/create-case')}
-              className="px-4 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 flex items-center gap-2"
+              className="px-4 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
             >
               <BookOpen size={16}/> Create New Case
             </button>
@@ -198,6 +242,21 @@ const Dashboard = () => {
                 )}
               </div>
               <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {(!cases || cases.length === 0) && (
+                  <div className="col-span-full flex flex-col items-center justify-center p-12 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mt-2 text-center">
+                    <div className="size-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 border border-slate-700">
+                      <BookOpen size={32} className="text-slate-500 opacity-50" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-200 mb-2">No Cases Published</h3>
+                    <p className="text-slate-400 max-w-md mb-6">You haven't created any case studies yet. Your library is currently empty.</p>
+                    <button 
+                      onClick={() => navigate('/create-case')}
+                      className="px-4 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 flex items-center gap-2"
+                    >
+                      <BookOpen size={16}/> Create Your First Case
+                    </button>
+                  </div>
+                )}
                 {cases && cases.map((c) => {
                   const subCount = submissions?.filter(s => s.caseId === c.id).length || 0;
                   return (
@@ -222,9 +281,7 @@ const Dashboard = () => {
                         <button 
                           onClick={(e) => { 
                              e.stopPropagation(); 
-                             if (window.confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
-                                 deleteCase(c.id);
-                             }
+                             setCaseToDelete(c.id);
                           }}
                           className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded transition-colors group z-10"
                           title="Delete Case"
@@ -395,7 +452,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto bg-background-dark">
+    <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-background-dark h-full min-h-0">
       <div className="max-w-6xl mx-auto space-y-8 mt-6">
         <header className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold text-slate-100">Learner Dashboard</h1>
@@ -403,6 +460,15 @@ const Dashboard = () => {
         </header>
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(!cases || cases.filter(c => c.status === 'Active').length === 0) && (
+            <div className="col-span-full flex flex-col items-center justify-center p-16 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mt-2 text-center">
+              <div className="size-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 border border-slate-700">
+                <BookOpen size={40} className="text-slate-500 opacity-50" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-200 mb-3">No Active Cases</h3>
+              <p className="text-slate-400 max-w-lg mb-6">There are currently no active case studies assigned to you. When your instructor publishes a case, it will appear here.</p>
+            </div>
+          )}
           {cases && cases.filter(c => c.status === 'Active').map(c => {
              const userSub = submissions?.find(s => s.caseId === c.id && s.learnerName === user?.name && (s.status === 'Submitted' || s.status.includes('Graded')));
              const isCompleted = !!userSub;

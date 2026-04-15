@@ -104,7 +104,7 @@ const Layout = () => {
       </header>
       
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden flex flex-col relative">
+      <main className="flex-1 overflow-hidden flex flex-col relative min-h-0">
         <Outlet />
       </main>
     </div>

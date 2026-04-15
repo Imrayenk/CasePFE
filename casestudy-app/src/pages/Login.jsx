@@ -31,8 +31,8 @@ const Login = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background-dark items-center justify-center p-6 text-slate-100">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col gap-8">
+    <div className="flex min-h-[100dvh] overflow-y-auto bg-background-dark p-6 text-slate-100">
+      <div className="m-auto w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col gap-8">
         <header className="flex flex-col items-center gap-4 text-center">
             <div className="flex items-center justify-center size-16 rounded-2xl bg-primary/20 text-primary border border-primary/30">
               <BriefcaseMedical size={32} />

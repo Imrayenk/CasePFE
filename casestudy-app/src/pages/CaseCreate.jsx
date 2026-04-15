@@ -84,12 +84,12 @@ const CaseCreate = () => {
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto bg-background-dark">
+    <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-background-dark h-full min-h-0">
       <div className="max-w-4xl mx-auto space-y-8 mt-6">
         
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/dashboard')} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <button onClick={() => navigate('/dashboard')} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors shrink-0">
               <ArrowLeft size={20} />
             </button>
             <div>
@@ -100,13 +100,13 @@ const CaseCreate = () => {
           <button 
             onClick={handleSave}
             disabled={!title || !content || isSaving}
-            className="px-6 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
           >
             <Save size={18}/> {isSaving ? 'Saving...' : (id ? 'Update Case' : 'Publish Case')}
           </button>
         </header>
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg flex flex-col gap-6">
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 md:p-6 shadow-lg flex flex-col gap-6">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-slate-300 uppercase tracking-wider">Case Title</label>

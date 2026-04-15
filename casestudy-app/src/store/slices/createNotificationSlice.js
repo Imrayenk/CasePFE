@@ -1,4 +1,5 @@
-import { supabase, IS_MOCK_MODE } from '../../lib/supabase';
+import { IS_MOCK_MODE } from '../../lib/supabase';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/api';
 
 export const createNotificationSlice = (set, get) => ({
   notifications: [],
@@ -6,23 +7,21 @@ export const createNotificationSlice = (set, get) => ({
      const state = get();
      if (IS_MOCK_MODE || !state.user) return;
      
-     const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', state.user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-        
-     if (data && !error) {
-         const mappedNotifications = data.map(n => ({
-             id: n.id,
-             userId: n.user_id,
-             title: n.title,
-             message: n.message,
-             time: n.created_at,
-             read: n.read
-         }));
-         set({ notifications: mappedNotifications });
+     try {
+         const data = await apiGet(`/notifications/${state.user.id}`);
+         if (data) {
+             const mappedNotifications = data.map(n => ({
+                 id: n.id,
+                 userId: n.userId,
+                 title: n.title,
+                 message: n.message,
+                 time: n.createdAt,
+                 read: n.read
+             }));
+             set({ notifications: mappedNotifications });
+         }
+     } catch (error) {
+         console.error("fetchNotifications error:", error);
      }
   },
   addNotification: async (title, message, targetUserId = null) => {
@@ -36,17 +35,18 @@ export const createNotificationSlice = (set, get) => ({
        return;
     }
 
-    const { error } = await supabase.from('notifications').insert([{
-        user_id: userId,
-        title,
-        message,
-        read: false
-    }]);
-    
-    if (error) {
+    try {
+        await apiPost('/notifications', {
+            userId,
+            title,
+            message
+        });
+        
+        if (!targetUserId || targetUserId === state.user?.id) {
+            get().fetchNotifications();
+        }
+    } catch (error) {
         console.error("Error adding notification:", error);
-    } else if (!targetUserId || targetUserId === state.user?.id) {
-        get().fetchNotifications();
     }
   },
   markNotificationsAsRead: async () => {
@@ -59,13 +59,11 @@ export const createNotificationSlice = (set, get) => ({
         return;
     }
     
-    const { error } = await supabase.from('notifications')
-        .update({ read: true })
-        .eq('user_id', state.user.id)
-        .eq('read', false);
-        
-    if (!error) {
+    try {
+        await apiPut(`/notifications/${state.user.id}/read`);
         get().fetchNotifications();
+    } catch (error) {
+        console.error("markNotificationsAsRead error:", error);
     }
   },
   clearNotifications: async () => {
@@ -78,12 +76,11 @@ export const createNotificationSlice = (set, get) => ({
         return;
     }
 
-    const { error } = await supabase.from('notifications')
-        .delete()
-        .eq('user_id', state.user.id);
-        
-    if (!error) {
+    try {
+        await apiDelete(`/notifications/${state.user.id}`);
         get().fetchNotifications();
+    } catch (error) {
+        console.error("clearNotifications error:", error);
     }
   },
 });

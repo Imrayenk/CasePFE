@@ -39,7 +39,7 @@ const Home = () => {
   };
 
   return (
-    <div className="h-screen overflow-y-auto bg-background-dark flex flex-col w-full selection:bg-primary/30">
+    <div className="min-h-[100dvh] overflow-y-auto bg-background-dark flex flex-col w-full selection:bg-primary/30">
       
       {/* Public Navbar */}
       <header className="flex items-center justify-between border-b border-slate-800/50 bg-slate-900/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50">

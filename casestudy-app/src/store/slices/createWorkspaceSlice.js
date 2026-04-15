@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { apiPost } from '../../lib/api';
 
 const initialKeywords = [
   { id: 'k1', text: 'quarterly compliance audit for the fiscal year 2023', category: 'yellow' },
@@ -33,103 +33,65 @@ export const createWorkspaceSlice = (set, get) => ({
   isGeneratingDraft: false,
   generateDraft: async () => {
     const state = get();
-    const developerApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
     
-    if (!developerApiKey) {
-       set({ summaryText: '<p><em><strong>Configuration Error:</strong> The developer has not provided a Gemini API Key in the <code>.env</code> file. Please ask the administrator to configure <code>VITE_GEMINI_API_KEY</code>.</em></p>' });
-       return;
-    }
-
     if (state.keywords.length === 0 && state.nodes.length === 0) {
         set({ summaryText: '<p><em>Please extract some keywords from the case study or build a Concept Map first so I can generate a tailored draft.</em></p>' });
         return;
     }
 
-    set({ isGeneratingDraft: true, summaryText: '<p><em>Synthesizing your workspace data using Gemini AI...</em></p>' });
+    set({ isGeneratingDraft: true, summaryText: '<p><em>Synthesizing your workspace data using local AI...</em></p>' });
     
     try {
-        const genAI = new GoogleGenerativeAI(developerApiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-        let prompt = `You are a professional assistant helping a student write a compliance review summary.
-Based on the following Case Study text, and the structural logical points the student has identified, write a cohesive, professional 2-3 paragraph summary.
-Your output MUST be entirely valid HTML inside <p> and <ul>/<li> tags as it will be injected into a rich text editor. Do NOT use markdown code blocks (\`\`\`).
-
---- CASE STUDY CONTEXT ---
-${state.currentCase?.content || state.currentCase?.description || 'No case content provided.'}
-
---- STUDENT'S EXTRACTED KEYWORDS ---
-${state.keywords.map(k => k.text).join(', ')}
-
---- STUDENT'S LOGICAL CONCEPT MAP (Use this to structure the narrative) ---
-`;
+        let logicalMapString = '';
         
         const problems = state.nodes.filter(n => n.type === 'problemNode');
-        if (problems.length > 0) prompt += `Identified Problem(s): ${problems.map(n => n.data.label).join('; ')}\n`;
+        if (problems.length > 0) logicalMapString += `Identified Problem(s): ${problems.map(n => n.data.label).join('; ')}\n`;
 
         const causes = state.nodes.filter(n => n.type === 'causeNode');
-        if (causes.length > 0) prompt += `Root Cause(s): ${causes.map(n => n.data.label).join('; ')}\n`;
+        if (causes.length > 0) logicalMapString += `Root Cause(s): ${causes.map(n => n.data.label).join('; ')}\n`;
 
         const analyses = state.nodes.filter(n => n.type === 'analysisNode');
-        if (analyses.length > 0) prompt += `Analysis: ${analyses.map(n => n.data.label).join('; ')}\n`;
+        if (analyses.length > 0) logicalMapString += `Analysis: ${analyses.map(n => n.data.label).join('; ')}\n`;
 
         const evidence = state.nodes.filter(n => n.type === 'evidenceNode');
-        if (evidence.length > 0) prompt += `Supporting Evidence: ${evidence.map(n => n.data.label).join('; ')}\n`;
+        if (evidence.length > 0) logicalMapString += `Supporting Evidence: ${evidence.map(n => n.data.label).join('; ')}\n`;
 
         const solutions = state.nodes.filter(n => n.type === 'solutionNode');
-        if (solutions.length > 0) prompt += `Proposed Solution(s): ${solutions.map(n => n.data.label).join('; ')}\n`;
+        if (solutions.length > 0) logicalMapString += `Proposed Solution(s): ${solutions.map(n => n.data.label).join('; ')}\n`;
 
         const conclusions = state.nodes.filter(n => n.type === 'conclusionNode');
-        if (conclusions.length > 0) prompt += `Conclusion: ${conclusions.map(n => n.data.label).join('; ')}\n`;
+        if (conclusions.length > 0) logicalMapString += `Conclusion: ${conclusions.map(n => n.data.label).join('; ')}\n`;
 
         const notes = state.nodes.filter(n => n.type === 'noteNode');
-        if (notes.length > 0) prompt += `Additional Notes: ${notes.map(n => n.data.label).join('; ')}\n`;
+        if (notes.length > 0) logicalMapString += `Additional Notes: ${notes.map(n => n.data.label).join('; ')}\n`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-        
-        const cleanedHtml = responseText.replace(/```html|```/g, '').trim();
-        
-        set({ summaryText: cleanedHtml, isGeneratingDraft: false });
+        const payload = {
+            caseContent: state.currentCase?.content || state.currentCase?.description || 'No case content provided.',
+            keywords: state.keywords.map(k => k.text),
+            logicalMapString
+        };
+
+        const result = await apiPost('/ai/draft', payload);
+        set({ summaryText: result.draftHtml, isGeneratingDraft: false });
     } catch (error) {
-        console.error("Gemini Generation Error:", error);
-        set({ summaryText: `<p><em>Error generating draft: ${error.message}. Please check the API configuration and try again.</em></p>`, isGeneratingDraft: false });
+        console.error("AI Generation Error:", error);
+        set({ summaryText: `<p><em>Error generating draft: ${error.message}. Please check that the local AI backend is running and try again.</em></p>`, isGeneratingDraft: false });
     }
   },
 
   isExtractingConcepts: false,
   extractConceptsAI: async () => {
     const state = get();
-    const developerApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
     
-    if (!developerApiKey) {
-       set({ summaryText: '<p><em><strong>Configuration Error:</strong> The developer has not provided a Gemini API Key in the <code>.env</code> file. Please ask the administrator to configure <code>VITE_GEMINI_API_KEY</code>.</em></p>' });
-       return;
-    }
-
     const caseContent = state.currentCase?.content || state.currentCase?.description || '';
     if (!caseContent) return;
 
     set({ isExtractingConcepts: true });
     
     try {
-        const genAI = new GoogleGenerativeAI(developerApiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
-
-        const prompt = `You are an expert business analyst helping a student extract key concepts from a case study.
-Read the following case study text.
-Extract exactly 3 to 5 key phrases or concepts.
-For each concept, assign a category: 'yellow' for general notes, problems, or observations, and 'blue' for specific evidence, dates, facts, or data points.
-Return the result STRICTLY as a JSON array of objects. Example format: [{"text": "operational bottlenecks", "category": "yellow"}, {"text": "15% behind schedule", "category": "blue"}]
-
---- CASE STUDY CONTEXT ---
-${caseContent}
-`;
-        
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-        
-        const extracted = JSON.parse(responseText.trim());
+        const payload = { caseContent };
+        const result = await apiPost('/ai/concepts', payload);
+        const extracted = result.concepts;
         
         if (Array.isArray(extracted)) {
             const newKeywords = extracted.map((kw, i) => ({
@@ -142,7 +104,7 @@ ${caseContent}
             set({ isExtractingConcepts: false });
         }
     } catch (error) {
-        console.error("Gemini Extraction Error:", error);
+        console.error("AI Extraction Error:", error);
         set({ summaryText: `<p><em>Error extracting concepts: ${error.message}. Check console for details.</em></p>`, isExtractingConcepts: false });
     }
   },

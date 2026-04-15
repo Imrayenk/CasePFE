@@ -1,47 +1,34 @@
-import { supabase, IS_MOCK_MODE } from '../../lib/supabase';
+import { IS_MOCK_MODE } from '../../lib/supabase';
+import { apiGet, apiPost, apiDelete } from '../../lib/api';
 
 export const createSocialSlice = (set, get) => ({
   socialData: {},
   fetchSocialData: async () => {
       if (IS_MOCK_MODE) return;
       
-      const [
-          { data: likesData, error: likesError },
-          { data: commentsData, error: commentsError }
-      ] = await Promise.all([
-          supabase.from('case_likes').select('*').gte('created_at', '2000-01-01T00:00:00Z'),
-          supabase.from('case_comments').select(`
-              id, case_id, user_id, text, created_at,
-              profiles ( full_name, avatar_url )
-          `).gte('created_at', '2000-01-01T00:00:00Z')
-      ]);
-
-      if (likesError) console.error("Error fetching likes:", likesError.message || likesError);
-      if (commentsError) console.error("Error fetching comments:", commentsError.message || commentsError);
-
-      if (!likesError && !commentsError) {
+      try {
+          const data = await apiGet('/cases/social/all');
           const newSocialData = {};
-          likesData?.forEach(like => {
-              if(!newSocialData[like.case_id]) newSocialData[like.case_id] = { likes: [], comments: [] };
-              // Prevent duplicate likes
-              if(!newSocialData[like.case_id].likes.includes(like.user_id)) {
-                  newSocialData[like.case_id].likes.push(like.user_id);
+          
+          data.likes?.forEach(like => {
+              if(!newSocialData[like.caseId]) newSocialData[like.caseId] = { likes: [], comments: [] };
+              if(!newSocialData[like.caseId].likes.includes(like.userId)) {
+                  newSocialData[like.caseId].likes.push(like.userId);
               }
           });
           
           const avatarsDict = {};
-          commentsData?.forEach(comment => {
-              if(!newSocialData[comment.case_id]) newSocialData[comment.case_id] = { likes: [], comments: [] };
+          data.comments?.forEach(comment => {
+              if(!newSocialData[comment.caseId]) newSocialData[comment.caseId] = { likes: [], comments: [] };
               
-              const profile = Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles;
-              if(profile?.avatar_url) avatarsDict[comment.user_id] = profile.avatar_url;
+              if(comment.user?.avatar_url) avatarsDict[comment.userId] = comment.user.avatar_url;
               
-              newSocialData[comment.case_id].comments.push({
+              newSocialData[comment.caseId].comments.push({
                   id: comment.id,
-                  userId: comment.user_id,
-                  userName: profile?.full_name || 'User',
+                  userId: comment.userId,
+                  userName: comment.user?.name || 'User',
                   text: comment.text,
-                  time: comment.created_at
+                  time: comment.createdAt
               });
           });
 
@@ -49,6 +36,8 @@ export const createSocialSlice = (set, get) => ({
               socialData: newSocialData,
               avatars: { ...s.avatars, ...avatarsDict }
           }));
+      } catch (error) {
+          console.error("fetchSocialData error:", error);
       }
   },
   toggleLike: async (caseId, userId) => {
@@ -72,16 +61,7 @@ export const createSocialSlice = (set, get) => ({
       // Background sync
       if (!IS_MOCK_MODE) {
           try {
-              if (hasLiked) {
-                  const { error } = await supabase.from('case_likes').delete().eq('case_id', caseId).eq('user_id', userId).select();
-                  if (error) console.error("Like deletion error:", error);
-              } else {
-                  const { error } = await supabase.from('case_likes').upsert(
-                      { case_id: caseId, user_id: userId }, 
-                      { onConflict: 'case_id,user_id', ignoreDuplicates: true }
-                  ).select();
-                  if (error) console.error("Like insertion error:", error);
-              }
+              await apiPost(`/cases/${caseId}/likes`, { userId });
           } catch (err) {
               console.error("Execution error during like sync:", err);
           }
@@ -104,27 +84,9 @@ export const createSocialSlice = (set, get) => ({
       });
 
       if (!IS_MOCK_MODE) {
-          const { data, error } = await supabase.from('case_comments').insert([{
-              case_id: caseId,
-              user_id: commentObj.userId,
-              text: commentObj.text
-          }]).select();
-          
-          if (error) {
-              console.error("Comment insertion error:", error);
-              set(s => {
-                  const fresh = s.socialData[caseId] || { likes: [], comments: [] };
-                  return {
-                      socialData: {
-                          ...s.socialData,
-                          [caseId]: { ...fresh, comments: fresh.comments.filter(c => c.id !== newComment.id) }
-                      }
-                  };
-              });
-              return;
-          }
-          
-          if (data && data.length > 0) {
+          try {
+              const data = await apiPost(`/cases/${caseId}/comments`, { userId: commentObj.userId, text: commentObj.text });
+              
               set(s => {
                   const caseSocial = s.socialData[caseId];
                   if (!caseSocial) return s;
@@ -134,9 +96,20 @@ export const createSocialSlice = (set, get) => ({
                           [caseId]: {
                               ...caseSocial,
                               comments: caseSocial.comments.map(c => 
-                                  c.id === newComment.id ? { ...c, id: data[0].id, time: data[0].created_at } : c
+                                  c.id === newComment.id ? { ...c, id: data.id, time: data.createdAt } : c
                               )
                           }
+                      }
+                  };
+              });
+          } catch (error) {
+              console.error("Comment insertion error:", error);
+              set(s => {
+                  const fresh = s.socialData[caseId] || { likes: [], comments: [] };
+                  return {
+                      socialData: {
+                          ...s.socialData,
+                          [caseId]: { ...fresh, comments: fresh.comments.filter(c => c.id !== newComment.id) }
                       }
                   };
               });
@@ -158,8 +131,11 @@ export const createSocialSlice = (set, get) => ({
       });
 
       if (!IS_MOCK_MODE) {
-          supabase.from('case_comments').delete().eq('id', commentId)
-              .then(({error}) => { if (error) console.error("Comment deletion error:", error); });
+          try {
+              await apiDelete(`/cases/${caseId}/comments/${commentId}`);
+          } catch (err) {
+              console.error("Comment deletion error:", err);
+          }
       }
   },
 });

@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("learner")
+  avatar_url String?
+
+  cases       Case[]
+  submissions Submission[]
+  comments    Comment[]
+  likes       Like[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Case {
+  id             String   @id @default(uuid())
+  title          String
+  content        String
+  description    String?
+  status         String   @default("draft")
+  difficulty     String?
+  category       String?
+  attachments    String?  // stored as JSON string
+  update_history String?  // stored as JSON string
+  
+  teacherId      String?
+  teacher        User?    @relation(fields: [teacherId], references: [id])
+
+  submissions    Submission[]
+  comments       Comment[]
+  likes          Like[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Submission {
+  id              String   @id @default(uuid())
+  status          String   @default("in_progress")
+  final_grade     Int?     @default(0)
+  word_count      Int      @default(0)
+  keyword_count   Int      @default(0)
+  node_count      Int      @default(0)
+  has_conclusion  Boolean  @default(false)
+  
+  summary_text    String?
+  draft_nodes     String?  // stored as JSON string
+  draft_edges     String?  // stored as JSON string
+  override_history String? // stored as JSON string
+
+  caseId          String
+  case            Case     @relation(fields: [caseId], references: [id])
+
+  learnerId       String
+  learner         User     @relation(fields: [learnerId], references: [id])
+
+  keywords        SubmissionKeyword[]
+  conceptNodes    ConceptNode[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SubmissionKeyword {
+  id           String     @id @default(uuid())
+  term         String
+  category     String?
+  
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id])
+
+  createdAt    DateTime   @default(now())
+}
+
+model ConceptNode {
+  id           String     @id @default(uuid())
+  node_type    String
+  text_content String
+  position_x   Float
+  position_y   Float
+
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id])
+
+  createdAt    DateTime   @default(now())
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  text      String
+
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id])
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Like {
+  id        String   @id @default(uuid())
+
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id])
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([caseId, userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}

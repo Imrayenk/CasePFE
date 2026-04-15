@@ -1,45 +1,56 @@
 import { supabase, IS_MOCK_MODE } from '../../lib/supabase';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/api';
 
 export const createCaseSlice = (set, get) => ({
   cases: [],
   fetchCases: async () => {
      if (IS_MOCK_MODE) return;
      
-     const { data, error } = await supabase.from('cases')
-          .select('id, title, content, description, created_at, status, attachments, update_history')
-          .gte('created_at', '2000-01-01T00:00:00Z')
-          .order('created_at', { ascending: false });
-          
-     if (data && !error) {
-         const mappedCases = data.map(c => ({
-             id: c.id,
-             title: c.title,
-             content: c.content,
-             description: c.description || '',
-             date: new Date(c.created_at).toISOString().split('T')[0],
-             status: c.status === 'draft' ? 'Draft' : (c.status === 'active' ? 'Active' : 'Closed'),
-             attachments: c.attachments || [],
-             updateHistory: c.update_history || []
-         }));
+     try {
+         const data = await apiGet('/cases');
+         const mappedCases = data.map(c => {
+             let parsedAttachments = [];
+             if (c.attachments) {
+                 try { parsedAttachments = typeof c.attachments === 'string' ? JSON.parse(c.attachments) : c.attachments; } catch(e) {}
+             }
+             let parsedHistory = [];
+             if (c.update_history) {
+                 try { parsedHistory = typeof c.update_history === 'string' ? JSON.parse(c.update_history) : c.update_history; } catch(e) {}
+             }
+
+             return {
+                 id: c.id,
+                 title: c.title,
+                 content: c.content,
+                 description: c.description || '',
+                 date: new Date(c.createdAt).toISOString().split('T')[0],
+                 status: c.status === 'draft' ? 'Draft' : (c.status === 'active' ? 'Active' : 'Closed'),
+                 attachments: parsedAttachments,
+                 updateHistory: parsedHistory
+             };
+         });
          set({ cases: mappedCases });
+     } catch (error) {
+         console.error("Error fetching cases:", error);
      }
   },
   addCase: async (newCase) => {
       if (IS_MOCK_MODE) return true;
       const statusMap = { 'Active': 'active', 'Closed': 'closed', 'Draft': 'draft' };
-      const { error } = await supabase.from('cases').insert([{
-          title: newCase.title,
-          content: newCase.content,
-          description: newCase.description,
-          status: statusMap[newCase.status] || 'draft',
-          attachments: newCase.attachments || [],
-          update_history: newCase.updateHistory || [],
-          teacher_id: get().user?.id
-      }]);
-      if (!error) {
+      
+      try {
+          await apiPost('/cases', {
+              title: newCase.title,
+              content: newCase.content,
+              description: newCase.description,
+              status: statusMap[newCase.status] || 'draft',
+              attachments: newCase.attachments || [],
+              update_history: newCase.updateHistory || [],
+              teacherId: get().user?.id
+          });
           await get().fetchCases();
           return true;
-      } else {
+      } catch (error) {
           console.error("Error adding case:", error);
           return { error: error.message || "Failed to add case due to a database error." };
       }
@@ -47,27 +58,39 @@ export const createCaseSlice = (set, get) => ({
   updateCase: async (updatedCase) => {
       if (IS_MOCK_MODE) return true;
       const statusMap = { 'Active': 'active', 'Closed': 'closed', 'Draft': 'draft' };
-      const { error } = await supabase.from('cases').update({
-          title: updatedCase.title,
-          content: updatedCase.content,
-          description: updatedCase.description,
-          status: statusMap[updatedCase.status] || 'draft',
-          attachments: updatedCase.attachments || [],
-          update_history: updatedCase.updateHistory || []
-      }).eq('id', updatedCase.id);
-      if (!error) {
+      
+      try {
+          await apiPut(`/cases/${updatedCase.id}`, {
+              title: updatedCase.title,
+              content: updatedCase.content,
+              description: updatedCase.description,
+              status: statusMap[updatedCase.status] || 'draft',
+              attachments: updatedCase.attachments || [],
+              update_history: updatedCase.updateHistory || []
+          });
           await get().fetchCases();
           return true;
-      } else {
+      } catch (error) {
           console.error("Error updating case:", error);
           return { error: error.message || "Failed to update case due to a database error." };
       }
   },
   deleteCase: async (id) => {
-      if (IS_MOCK_MODE) return;
-      const { error } = await supabase.from('cases').delete().eq('id', id);
-      if (!error) get().fetchCases();
-      else console.error("Error deleting case:", error);
+      if (IS_MOCK_MODE) return { success: false, error: 'Database connected, mock mode disabled.' };
+      try {
+          // Optimistically remove from state for snappy UX
+          const previousCases = get().cases;
+          set({ cases: previousCases.filter(c => c.id !== id) });
+          
+          await apiDelete(`/cases/${id}`);
+          get().fetchCases();
+          get().fetchSocialData?.();
+          return { success: true };
+      } catch (error) {
+          console.error("Error deleting case:", error);
+          get().fetchCases(); // Restore on failure
+          return { success: false, error: error.message || "Failed to delete case." };
+      }
   },
   
   currentCase: null,
@@ -134,31 +157,33 @@ export const createCaseSlice = (set, get) => ({
      const state = get();
      if (IS_MOCK_MODE || !state.user) return;
      
-     let query = supabase
-        .from('submissions')
-        .select('id, case_id, status, final_grade, created_at, word_count, keyword_count, node_count, has_conclusion, override_history, learner_id, profiles(full_name)')
-        .order('created_at', { ascending: false });
-        
-     if (state.user.role === 'learner') {
-         query = query.eq('learner_id', state.user.id);
-     }
-
-     const { data, error } = await query;
-     if (data && !error) {
-         const mappedSubmissions = data.map(s => ({
-             id: s.id,
-             learnerName: s.profiles?.full_name || 'Unknown Learner',
-             caseId: s.case_id,
-             status: s.status === 'in_progress' ? 'In Progress' : (s.status === 'submitted' ? 'Submitted' : (s.status === 'graded' ? 'Graded' : 'Graded (Override)')),
-             score: s.final_grade || 0,
-             date: new Date(s.created_at).toISOString().split('T')[0],
-             wordCount: s.word_count || 0,
-             keywords: s.keyword_count || 0,
-             nodes: s.node_count || 0,
-             hasConclusion: s.has_conclusion || false,
-             overrideHistory: s.override_history || []
-         }));
-         set({ submissions: mappedSubmissions });
+     try {
+         const queryParams = state.user.role === 'learner' ? `?learnerId=${state.user.id}` : '';
+         const data = await apiGet(`/submissions${queryParams}`);
+         if (data) {
+             const mappedSubmissions = data.map(s => {
+                 let parsedHistory = [];
+                 if (s.override_history) {
+                     try { parsedHistory = typeof s.override_history === 'string' ? JSON.parse(s.override_history) : s.override_history; } catch(e) {}
+                 }
+                 return {
+                     id: s.id,
+                     learnerName: s.learner?.name || 'Unknown Learner',
+                     caseId: s.caseId,
+                     status: s.status === 'in_progress' ? 'In Progress' : (s.status === 'submitted' ? 'Submitted' : (s.status === 'graded' ? 'Graded' : 'Graded (Override)')),
+                     score: s.final_grade || 0,
+                     date: new Date(s.createdAt).toISOString().split('T')[0],
+                     wordCount: s.word_count || 0,
+                     keywords: s.keyword_count || 0,
+                     nodes: s.node_count || 0,
+                     hasConclusion: s.has_conclusion || false,
+                     overrideHistory: parsedHistory
+                 };
+             });
+             set({ submissions: mappedSubmissions });
+         }
+     } catch (error) {
+         console.error("fetchSubmissions error:", error);
      }
   },
   updateSubmissionScore: async (id, newScore) => {
@@ -176,16 +201,14 @@ export const createCaseSlice = (set, get) => ({
      };
      history.push(newEntry);
 
-     const { error } = await supabase.from('submissions')
-        .update({ final_grade: newScore, status: 'graded_override', override_history: history })
-        .eq('id', id);
-        
-     if (error) {
-         console.error("Score update RLS/DB error:", error);
+     try {
+         await apiPut(`/submissions/${id}/score`, { newScore, history });
+         await get().fetchSubmissions();
+         return { success: true };
+     } catch (error) {
+         console.error("Score update error:", error);
          return { success: false, error: error.message };
      }
-     await get().fetchSubmissions();
-     return { success: true };
   },
 
   evaluationReady: 85,
@@ -206,41 +229,38 @@ export const createCaseSlice = (set, get) => ({
          wordCount = plainText === '' ? 0 : plainText.split(/\s+/).length;
      }
 
-     const { error } = await supabase.from('submissions').upsert([{
-         case_id: state.currentCase.id,
-         learner_id: state.user.id,
-         summary_text: state.summaryText,
-         draft_keywords: state.keywords,
-         draft_nodes: state.nodes,
-         draft_edges: state.edges,
-         status: 'in_progress',
-         word_count: wordCount,
-         updated_at: new Date().toISOString()
-     }], { onConflict: 'case_id,learner_id' });
-
-     if (error) {
+     try {
+         await apiPost('/submissions', {
+             case_id: state.currentCase.id,
+             learner_id: state.user.id,
+             summary_text: state.summaryText,
+             draft_nodes: state.nodes,
+             draft_edges: state.edges,
+             status: 'in_progress',
+             word_count: wordCount
+         });
+         if (!silent) Object.keys(state).includes('addNotification') && state.addNotification('Draft Saved', `Your progress on ${state.currentCase.title} has been backed up.`);
+     } catch (error) {
          console.error("Error saving draft:", error);
-     } else if (!silent) {
-         state.addNotification('Draft Saved', `Your progress on ${state.currentCase.title} has been backed up.`);
      }
   },
   fetchDraft: async (caseId) => {
      const state = get();
      if (IS_MOCK_MODE || !state.user?.id || !caseId) return;
      
-     const { data, error } = await supabase
-        .from('submissions')
-        .select('summary_text, draft_keywords, draft_nodes, draft_edges')
-        .eq('case_id', caseId)
-        .eq('learner_id', state.user.id)
-        .eq('status', 'in_progress')
-        .maybeSingle();
-        
-     if (!error && data) {
-         if (data.summary_text) set({ summaryText: data.summary_text });
-         if (data.draft_keywords) set({ keywords: data.draft_keywords });
-         if (data.draft_nodes) set({ nodes: data.draft_nodes });
-         if (data.draft_edges) set({ edges: data.draft_edges });
+     try {
+         const data = await apiGet(`/submissions/${caseId}/${state.user.id}`);
+         if (data && data.status === 'in_progress') {
+             if (data.summary_text) set({ summaryText: data.summary_text });
+             if (data.draft_nodes) {
+                 try { set({ nodes: typeof data.draft_nodes === 'string' ? JSON.parse(data.draft_nodes) : data.draft_nodes }); } catch(e){}
+             }
+             if (data.draft_edges) {
+                 try { set({ edges: typeof data.draft_edges === 'string' ? JSON.parse(data.draft_edges) : data.draft_edges }); } catch(e){}
+             }
+         }
+     } catch (error) {
+         console.error("fetchDraft error:", error);
      }
   },
   submitAssignment: async () => {
@@ -266,71 +286,32 @@ export const createCaseSlice = (set, get) => ({
         throw new Error("Missing user or case information. Please try refreshing.");
       }
 
-      const { data: subData, error: subError } = await supabase.from('submissions').upsert([{
+      const result = await apiPost('/submissions/submit', {
           case_id: state.currentCase.id,
           learner_id: state.user.id,
           summary_text: state.summaryText,
           draft_keywords: state.keywords,
           draft_nodes: state.nodes,
           draft_edges: state.edges,
-          status: 'submitted',
           word_count: wordCount,
           keyword_count: keywordCount,
           node_count: nodeCount,
-          has_conclusion: hasConclusion,
-          updated_at: new Date().toISOString()
-      }], { onConflict: 'case_id,learner_id' }).select().single();
+          has_conclusion: hasConclusion
+      });
 
-      if (subError) throw new Error(`Database error: ${subError.message}`);
-      if (!subData) throw new Error("Failed to save submission metadata.");
-
-      const submissionId = subData.id;
-
-      await supabase.from('keywords').delete().eq('submission_id', submissionId);
-      await supabase.from('concept_nodes').delete().eq('submission_id', submissionId);
-
-      if (state.keywords.length > 0) {
-          const kws = state.keywords.map(k => ({
-              submission_id: submissionId,
-              term: k.text,
-              category: k.category
-          }));
-          await supabase.from('keywords').insert(kws);
-      }
-
-      if (state.nodes.length > 0) {
-          const nodesToInsert = state.nodes.map(n => {
-              let nodeType = n.type.replace('Node', '').toLowerCase();
-              if (!['problem', 'cause', 'analysis', 'solution', 'conclusion', 'note', 'evidence'].includes(nodeType)) {
-                 nodeType = 'note';
-              }
-              return {
-                  submission_id: submissionId,
-                  node_type: nodeType,
-                  text_content: n.data.label,
-                  position_x: n.position.x,
-                  position_y: n.position.y
-              };
-          });
-          await supabase.from('concept_nodes').insert(nodesToInsert);
-      }
-
-      const { data: evalResult, error: evalError } = await supabase.rpc('evaluate_submission', { p_submission_id: submissionId });
-      
-      if (evalError) console.error("Evaluation RPC Error:", evalError);
-
+      const score = result.score || 0;
       get().fetchSubmissions();
 
-      const score = evalResult?.score || 0;
-      state.addNotification('Case Submitted', `You scored ${score}/100 on ${state.currentCase?.title || 'Case Study'}`);
+      if (Object.keys(state).includes('addNotification')) {
+          state.addNotification('Case Submitted', `You scored ${score}/100 on ${state.currentCase?.title || 'Case Study'}`);
+          const learnerName = state.user?.name || 'Anonymous Learner';
+          const caseTitle = state.currentCase?.title || 'Case Study';
+          state.usersDb.filter(u => u.role === 'teacher').forEach(teacher => {
+            state.addNotification('New Submission', `${learnerName} submitted ${caseTitle} with a score of ${score}/100.`, teacher.id);
+          });
+      }
       
-      const learnerName = state.user?.name || 'Anonymous Learner';
-      const caseTitle = state.currentCase?.title || 'Case Study';
-      state.usersDb.filter(u => u.role === 'teacher').forEach(teacher => {
-        state.addNotification('New Submission', `${learnerName} submitted ${caseTitle} with a score of ${score}/100.`, teacher.id);
-      });
-      
-      const fullResult = { ...evalResult, wordCount, keywordCount, nodeCount, hasConclusion };
+      const fullResult = { score, wordCount, keywordCount, nodeCount, hasConclusion };
       set({ submissionResult: fullResult });
       return fullResult;
     } catch (error) {

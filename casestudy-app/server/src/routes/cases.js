@@ -1,0 +1,107 @@
+const express = require('express');
+const router = express.Router();
+const prisma = require('../lib/prisma');
+
+// GET /api/cases
+router.get('/', async (req, res) => {
+    try {
+        const cases = await prisma.case.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(cases);
+    } catch (error) {
+        console.error("GET / cases error:", error);
+        res.status(500).json({ error: error.message || 'Unknown server error' });
+    }
+});
+
+// GET /api/cases/:id
+router.get('/:id', async (req, res) => {
+    try {
+        const c = await prisma.case.findUnique({
+            where: { id: req.params.id }
+        });
+        if (!c) return res.status(404).json({ error: 'Case not found' });
+        res.json(c);
+    } catch (error) {
+        console.error("GET /:id cases error:", error);
+        res.status(500).json({ error: error.message || 'Unknown server error' });
+    }
+});
+
+// POST /api/cases
+router.post('/', async (req, res) => {
+    try {
+        const { title, content, description, status, teacherId, attachments, update_history } = req.body;
+        const newCase = await prisma.case.create({
+            data: {
+                title,
+                content,
+                description,
+                status: status || 'draft',
+                attachments: attachments ? JSON.stringify(attachments) : null,
+                update_history: update_history ? JSON.stringify(update_history) : null,
+                teacherId
+            }
+        });
+        res.json(newCase);
+    } catch (error) {
+        console.error("POST / cases error:", error);
+        res.status(500).json({ error: error.message || 'Unknown server error' });
+    }
+});
+
+// PUT /api/cases/:id
+router.put('/:id', async (req, res) => {
+    try {
+        const { title, content, description, status, attachments, update_history } = req.body;
+        const updated = await prisma.case.update({
+            where: { id: req.params.id },
+            data: {
+                title,
+                content,
+                description,
+                status,
+                attachments: attachments ? JSON.stringify(attachments) : null,
+                update_history: update_history ? JSON.stringify(update_history) : null,
+            }
+        });
+        res.json(updated);
+    } catch (error) {
+        console.error("PUT /:id cases error:", error);
+        res.status(500).json({ error: error.message || 'Unknown server error' });
+    }
+});
+
+// DELETE /api/cases/:id
+router.delete('/:id', async (req, res) => {
+    try {
+        const caseId = req.params.id;
+
+        await prisma.$transaction(async (tx) => {
+            const submissions = await tx.submission.findMany({
+                where: { caseId },
+                select: { id: true }
+            });
+            const subIds = submissions.map(s => s.id);
+
+            if (subIds.length > 0) {
+                await tx.conceptNode.deleteMany({ where: { submissionId: { in: subIds } } });
+                await tx.submissionKeyword.deleteMany({ where: { submissionId: { in: subIds } } });
+                await tx.submission.deleteMany({ where: { caseId } });
+            }
+
+            await tx.comment.deleteMany({ where: { caseId } });
+            await tx.like.deleteMany({ where: { caseId } });
+            
+            await tx.case.delete({ where: { id: caseId } });
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("DELETE /:id cases error:", error);
+        res.status(500).json({ error: error.message || 'Unknown server error' });
+    }
+});
+
+module.exports = router;

@@ -177,7 +177,7 @@ const CaseReader = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800">
+    <div className="flex flex-col h-full bg-slate-900">
       <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0 z-20 bg-slate-900 shadow-sm">
         <div className="flex items-center gap-4">
           <button 

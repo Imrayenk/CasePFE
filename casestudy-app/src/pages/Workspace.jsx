@@ -69,13 +69,13 @@ const WorkspaceInternal = () => {
 
             <div className="flex-1 relative overflow-hidden w-full h-full">
                 {activeTab === 'reader_editor' && (
-                    <div className="flex w-full h-full animate-in fade-in duration-300">
+                    <div className="flex flex-col lg:flex-row w-full h-full animate-in fade-in duration-300">
                         {/* Left Side: Case Reader */}
-                        <div className="w-1/2 h-full border-r border-slate-800 relative bg-slate-900 flex flex-col">
+                        <div className="flex-1 border-b lg:border-b-0 lg:border-r border-slate-800 relative bg-slate-900 flex flex-col min-h-0 lg:min-w-0">
                             <CaseReader />
                         </div>
                         {/* Right Side: Summary Editor */}
-                        <div className="w-1/2 h-full flex flex-col relative bg-background-dark">
+                        <div className="flex-1 flex flex-col relative bg-background-dark min-h-0 lg:min-w-0">
                             <SummaryEditor setActiveTab={setActiveTab} />
                         </div>
                     </div>

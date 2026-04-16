@@ -1,11 +1,8 @@
-import { IS_MOCK_MODE } from '../../lib/supabase';
 import { apiGet, apiPost, apiDelete } from '../../lib/api';
 
 export const createSocialSlice = (set, get) => ({
   socialData: {},
   fetchSocialData: async () => {
-      if (IS_MOCK_MODE) return;
-      
       try {
           const data = await apiGet('/cases/social/all');
           const newSocialData = {};
@@ -59,12 +56,10 @@ export const createSocialSlice = (set, get) => ({
       });
 
       // Background sync
-      if (!IS_MOCK_MODE) {
-          try {
-              await apiPost(`/cases/${caseId}/likes`, { userId });
-          } catch (err) {
-              console.error("Execution error during like sync:", err);
-          }
+      try {
+          await apiPost(`/cases/${caseId}/likes`, { userId });
+      } catch (err) {
+          console.error("Execution error during like sync:", err);
       }
   },
   addComment: async (caseId, commentObj) => {
@@ -83,37 +78,35 @@ export const createSocialSlice = (set, get) => ({
           };
       });
 
-      if (!IS_MOCK_MODE) {
-          try {
-              const data = await apiPost(`/cases/${caseId}/comments`, { userId: commentObj.userId, text: commentObj.text });
-              
-              set(s => {
-                  const caseSocial = s.socialData[caseId];
-                  if (!caseSocial) return s;
-                  return {
-                      socialData: {
-                          ...s.socialData,
-                          [caseId]: {
-                              ...caseSocial,
-                              comments: caseSocial.comments.map(c => 
-                                  c.id === newComment.id ? { ...c, id: data.id, time: data.createdAt } : c
-                              )
-                          }
+      try {
+          const data = await apiPost(`/cases/${caseId}/comments`, { userId: commentObj.userId, text: commentObj.text });
+          
+          set(s => {
+              const caseSocial = s.socialData[caseId];
+              if (!caseSocial) return s;
+              return {
+                  socialData: {
+                      ...s.socialData,
+                      [caseId]: {
+                          ...caseSocial,
+                          comments: caseSocial.comments.map(c => 
+                              c.id === newComment.id ? { ...c, id: data.id, time: data.createdAt } : c
+                          )
                       }
-                  };
-              });
-          } catch (error) {
-              console.error("Comment insertion error:", error);
-              set(s => {
-                  const fresh = s.socialData[caseId] || { likes: [], comments: [] };
-                  return {
-                      socialData: {
-                          ...s.socialData,
-                          [caseId]: { ...fresh, comments: fresh.comments.filter(c => c.id !== newComment.id) }
-                      }
-                  };
-              });
-          }
+                  }
+              };
+          });
+      } catch (error) {
+          console.error("Comment insertion error:", error);
+          set(s => {
+              const fresh = s.socialData[caseId] || { likes: [], comments: [] };
+              return {
+                  socialData: {
+                      ...s.socialData,
+                      [caseId]: { ...fresh, comments: fresh.comments.filter(c => c.id !== newComment.id) }
+                  }
+              };
+          });
       }
   },
   deleteComment: async (caseId, commentId) => {
@@ -130,12 +123,10 @@ export const createSocialSlice = (set, get) => ({
           };
       });
 
-      if (!IS_MOCK_MODE) {
-          try {
-              await apiDelete(`/cases/${caseId}/comments/${commentId}`);
-          } catch (err) {
-              console.error("Comment deletion error:", err);
-          }
+      try {
+          await apiDelete(`/cases/${caseId}/comments/${commentId}`);
+      } catch (err) {
+          console.error("Comment deletion error:", err);
       }
   },
 });

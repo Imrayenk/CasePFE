@@ -23,7 +23,7 @@ const useStore = create(
     {
       name: 'casestudy-storage',
       // CRITICAL FIX: We strictly exclude user, socialData, and avatars from persistence.
-      // This solves the stale profile load bug and prevents race conditions with Supabase.
+      // This solves stale profile loads and keeps API-backed session state fresh.
       partialize: (state) => ({ 
         isDarkMode: state.isDarkMode,
         caseWorkspaces: state.caseWorkspaces,

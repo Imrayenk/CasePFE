@@ -12,7 +12,7 @@ async function handleResponse(res) {
         try {
             const errData = await res.json();
             errStr = errData.error || errStr;
-        } catch(e) {
+        } catch {
             // Unparseable error stream safely bypassed
         }
         throw new Error(errStr);

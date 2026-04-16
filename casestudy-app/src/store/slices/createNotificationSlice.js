@@ -1,11 +1,10 @@
-import { IS_MOCK_MODE } from '../../lib/supabase';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/api';
 
 export const createNotificationSlice = (set, get) => ({
   notifications: [],
   fetchNotifications: async () => {
      const state = get();
-     if (IS_MOCK_MODE || !state.user) return;
+     if (!state.user) return;
      
      try {
          const data = await apiGet(`/notifications/${state.user.id}`);
@@ -28,7 +27,7 @@ export const createNotificationSlice = (set, get) => ({
     const state = get();
     const userId = targetUserId || state.user?.id || 'system';
     
-    if (IS_MOCK_MODE || userId === 'system') {
+    if (userId === 'system') {
        set(s => ({
           notifications: [{ id: 'notif-' + Date.now(), userId, title, message, time: new Date().toISOString(), read: false }, ...s.notifications]
        }));
@@ -52,7 +51,7 @@ export const createNotificationSlice = (set, get) => ({
   markNotificationsAsRead: async () => {
     const state = get();
     const currentUserId = state.user?.id || 'system';
-    if (IS_MOCK_MODE || currentUserId === 'system') {
+    if (currentUserId === 'system') {
         set(s => ({
            notifications: s.notifications.map(n => (n.userId === currentUserId && !n.read) ? { ...n, read: true } : n)
         }));
@@ -69,7 +68,7 @@ export const createNotificationSlice = (set, get) => ({
   clearNotifications: async () => {
     const state = get();
     const currentUserId = state.user?.id || 'system';
-    if (IS_MOCK_MODE || currentUserId === 'system') {
+    if (currentUserId === 'system') {
         set(s => ({
            notifications: s.notifications.filter(n => n.userId !== currentUserId)
         }));

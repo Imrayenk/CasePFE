@@ -2,6 +2,17 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 
+function parseJsonArray(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
 // GET /api/submissions
 router.get('/', async (req, res) => {
     try {
@@ -17,6 +28,32 @@ router.get('/', async (req, res) => {
             include: { learner: { select: { name: true } } }
         });
         res.json(submissions);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/submissions/details/:id
+router.get('/details/:id', async (req, res) => {
+    try {
+        const submission = await prisma.submission.findUnique({
+            where: { id: req.params.id },
+            select: {
+                summary_text: true,
+                draft_nodes: true,
+                draft_edges: true
+            }
+        });
+
+        if (!submission) {
+            return res.status(404).json({ error: 'Submission not found' });
+        }
+
+        res.json({
+            summary_text: submission.summary_text || '',
+            draft_nodes: parseJsonArray(submission.draft_nodes),
+            draft_edges: parseJsonArray(submission.draft_edges)
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -77,7 +114,7 @@ router.post('/', async (req, res) => {
 // POST /api/submissions/submit
 router.post('/submit', async (req, res) => {
     try {
-        const { case_id, learner_id, summary_text, draft_keywords, draft_nodes, draft_edges, status, word_count, keyword_count, node_count, has_conclusion } = req.body;
+        const { case_id, learner_id, summary_text, draft_nodes, draft_edges, status, word_count, keyword_count, node_count, has_conclusion } = req.body;
         
         let existing = await prisma.submission.findFirst({
             where: { caseId: case_id, learnerId: learner_id }

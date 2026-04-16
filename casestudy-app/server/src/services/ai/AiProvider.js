@@ -11,7 +11,7 @@ class AiProvider {
      * @param {string} params.logicalMapString
      * @returns {Promise<string>} The generated draft HTML
      */
-    async generateDraft({ caseContent, keywords, logicalMapString }) {
+    async generateDraft() {
         throw new Error('Method "generateDraft" must be implemented.');
     }
 
@@ -20,7 +20,7 @@ class AiProvider {
      * @param {string} caseContent The full text of the case study
      * @returns {Promise<Array<{text: string, category: string}>>} Array of extracted concepts
      */
-    async extractConcepts(caseContent) {
+    async extractConcepts() {
         throw new Error('Method "extractConcepts" must be implemented.');
     }
 }

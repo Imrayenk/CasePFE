@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Edit3, Send, CheckCircle, AlertTriangle, FileText, Network, History } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { ArrowLeft, Edit3, Send, CheckCircle, FileText, Network, History } from 'lucide-react';
+import { apiGet } from '../lib/api';
 import ReadOnlyConceptMapper from '../components/ReadOnlyConceptMapper';
 
 const GradingView = () => {
@@ -36,14 +36,9 @@ const GradingView = () => {
         setOverrideScore(submission.score || 0);
     }
     const fetchDetails = async () => {
+        setDetails(prev => ({ ...prev, isLoading: true, error: null }));
         try {
-            const { data, error } = await supabase
-              .from('submissions')
-              .select('summary_text, draft_nodes, draft_edges')
-              .eq('id', id)
-              .single();
-
-            if (error) throw error;
+            const data = await apiGet(`/submissions/details/${id}`);
 
             setDetails({
                 summary_text: data.summary_text || '',

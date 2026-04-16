@@ -1,4 +1,3 @@
-import { IS_MOCK_MODE } from '../../lib/supabase';
 import { apiGet, apiPost } from '../../lib/api';
 
 export const createAuthSlice = (set, get) => ({
@@ -6,8 +5,6 @@ export const createAuthSlice = (set, get) => ({
   authLoading: true,
   
   signIn: async (email, password) => {
-    if (IS_MOCK_MODE) return { success: false, error: 'Database connected, mock mode disabled.' };
-    
     try {
         const data = await apiPost('/auth/login', { email, password });
         localStorage.setItem('token', data.token);
@@ -24,8 +21,6 @@ export const createAuthSlice = (set, get) => ({
   },
   
   signUp: async (name, email, password, role) => {
-    if (IS_MOCK_MODE) return { success: false, error: 'Mock mode disabled.' };
-    
     try {
         const data = await apiPost('/auth/register', { name, email, password, role });
         localStorage.setItem('token', data.token);
@@ -47,11 +42,6 @@ export const createAuthSlice = (set, get) => ({
     const stateTheme = get().isDarkMode;
     document.documentElement.classList.toggle('light', !stateTheme);
     document.documentElement.classList.toggle('dark', stateTheme !== false);
-
-    if (IS_MOCK_MODE) {
-      set({ authLoading: false });
-      return;
-    }
 
     const token = localStorage.getItem('token');
     if (!token) {

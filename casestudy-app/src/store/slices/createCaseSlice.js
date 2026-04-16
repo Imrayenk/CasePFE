@@ -1,22 +1,23 @@
-import { supabase, IS_MOCK_MODE } from '../../lib/supabase';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/api';
+
+const parseJsonValue = (value, fallback) => {
+    if (!value) return fallback;
+    if (typeof value !== 'string') return value;
+    try {
+        return JSON.parse(value);
+    } catch {
+        return fallback;
+    }
+};
 
 export const createCaseSlice = (set, get) => ({
   cases: [],
   fetchCases: async () => {
-     if (IS_MOCK_MODE) return;
-     
      try {
          const data = await apiGet('/cases');
          const mappedCases = data.map(c => {
-             let parsedAttachments = [];
-             if (c.attachments) {
-                 try { parsedAttachments = typeof c.attachments === 'string' ? JSON.parse(c.attachments) : c.attachments; } catch(e) {}
-             }
-             let parsedHistory = [];
-             if (c.update_history) {
-                 try { parsedHistory = typeof c.update_history === 'string' ? JSON.parse(c.update_history) : c.update_history; } catch(e) {}
-             }
+             const parsedAttachments = parseJsonValue(c.attachments, []);
+             const parsedHistory = parseJsonValue(c.update_history, []);
 
              return {
                  id: c.id,
@@ -35,7 +36,6 @@ export const createCaseSlice = (set, get) => ({
      }
   },
   addCase: async (newCase) => {
-      if (IS_MOCK_MODE) return true;
       const statusMap = { 'Active': 'active', 'Closed': 'closed', 'Draft': 'draft' };
       
       try {
@@ -56,7 +56,6 @@ export const createCaseSlice = (set, get) => ({
       }
   },
   updateCase: async (updatedCase) => {
-      if (IS_MOCK_MODE) return true;
       const statusMap = { 'Active': 'active', 'Closed': 'closed', 'Draft': 'draft' };
       
       try {
@@ -76,7 +75,6 @@ export const createCaseSlice = (set, get) => ({
       }
   },
   deleteCase: async (id) => {
-      if (IS_MOCK_MODE) return { success: false, error: 'Database connected, mock mode disabled.' };
       try {
           // Optimistically remove from state for snappy UX
           const previousCases = get().cases;
@@ -155,17 +153,14 @@ export const createCaseSlice = (set, get) => ({
   submissions: [],
   fetchSubmissions: async () => {
      const state = get();
-     if (IS_MOCK_MODE || !state.user) return;
+     if (!state.user) return;
      
      try {
          const queryParams = state.user.role === 'learner' ? `?learnerId=${state.user.id}` : '';
          const data = await apiGet(`/submissions${queryParams}`);
          if (data) {
              const mappedSubmissions = data.map(s => {
-                 let parsedHistory = [];
-                 if (s.override_history) {
-                     try { parsedHistory = typeof s.override_history === 'string' ? JSON.parse(s.override_history) : s.override_history; } catch(e) {}
-                 }
+                 const parsedHistory = parseJsonValue(s.override_history, []);
                  return {
                      id: s.id,
                      learnerName: s.learner?.name || 'Unknown Learner',
@@ -187,7 +182,6 @@ export const createCaseSlice = (set, get) => ({
      }
   },
   updateSubmissionScore: async (id, newScore) => {
-     if (IS_MOCK_MODE) return { success: true };
      const state = get();
      const sub = state.submissions.find(s => s.id === id);
      const oldScore = sub ? sub.score : 0;
@@ -215,7 +209,7 @@ export const createCaseSlice = (set, get) => ({
   submissionResult: null,
   saveDraft: async (currentWordCount, silent = true) => {
      const state = get();
-     if (IS_MOCK_MODE || !state.currentCase?.id || !state.user?.id) return;
+     if (!state.currentCase?.id || !state.user?.id) return;
 
      let wordCount = currentWordCount;
      if (wordCount === undefined) {
@@ -246,17 +240,17 @@ export const createCaseSlice = (set, get) => ({
   },
   fetchDraft: async (caseId) => {
      const state = get();
-     if (IS_MOCK_MODE || !state.user?.id || !caseId) return;
+     if (!state.user?.id || !caseId) return;
      
      try {
          const data = await apiGet(`/submissions/${caseId}/${state.user.id}`);
          if (data && data.status === 'in_progress') {
              if (data.summary_text) set({ summaryText: data.summary_text });
              if (data.draft_nodes) {
-                 try { set({ nodes: typeof data.draft_nodes === 'string' ? JSON.parse(data.draft_nodes) : data.draft_nodes }); } catch(e){}
+                 set({ nodes: parseJsonValue(data.draft_nodes, []) });
              }
              if (data.draft_edges) {
-                 try { set({ edges: typeof data.draft_edges === 'string' ? JSON.parse(data.draft_edges) : data.draft_edges }); } catch(e){}
+                 set({ edges: parseJsonValue(data.draft_edges, []) });
              }
          }
      } catch (error) {
@@ -279,8 +273,6 @@ export const createCaseSlice = (set, get) => ({
       const keywordCount = state.keywords.length;
       const nodeCount = state.nodes.length;
       const hasConclusion = state.nodes.some(n => n.type === 'conclusionNode');
-
-      if (IS_MOCK_MODE) return { score: 85, wordCount, keywordCount, nodeCount, hasConclusion };
 
       if (!state.user?.id || !state.currentCase?.id) {
         throw new Error("Missing user or case information. Please try refreshing.");

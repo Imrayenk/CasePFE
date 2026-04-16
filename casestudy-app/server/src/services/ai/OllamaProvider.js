@@ -97,7 +97,7 @@ class OllamaProvider extends AiProvider {
             }
 
             return Array.isArray(extracted) ? extracted : [];
-        } catch (err) {
+        } catch {
             console.error('Failed to parse Ollama JSON response:', responseText);
             throw new Error('Invalid JSON format returned from LLM. Response was: ' + responseText);
         }

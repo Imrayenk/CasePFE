@@ -3,9 +3,9 @@ import useStore from '../store/useStore';
 import Hero from '../components/home/Hero';
 import PopularCases from '../components/home/PopularCases';
 import FeatureGrid from '../components/home/FeatureGrid';
+import Aurora from '../components/reactbits/Aurora';
 import { BriefcaseMedical, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
 const Home = () => {
   const { user } = useStore();
 
@@ -39,7 +39,15 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-y-auto bg-background-dark flex flex-col w-full selection:bg-primary/30">
+    <div className="min-h-[100dvh] overflow-y-auto bg-background-dark flex flex-col w-full selection:bg-primary/30 relative">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Aurora
+          colorStops={["#7cff67","#B497CF","#5227FF"]}
+          blend={0.5}
+          amplitude={1.0}
+          speed={1}
+        />
+      </div>
       
       {/* Public Navbar */}
       <header className="flex items-center justify-between border-b border-slate-800/50 bg-slate-900/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
@@ -88,14 +96,14 @@ const Home = () => {
         </div>
       </header>
 
-      <main className="flex-1 w-full flex flex-col">
+      <main className="flex-1 w-full flex flex-col relative z-10">
         <Hero user={user} />
         <PopularCases user={user} />
         <FeatureGrid />
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-800 bg-slate-900 py-10 mt-auto">
+      <footer className="w-full border-t border-slate-800 bg-slate-900 py-10 mt-auto relative z-10">
         <div className="max-w-7xl mx-auto px-6 text-center flex flex-col items-center gap-4">
           <div className="flex gap-6 text-sm text-slate-400">
              <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>

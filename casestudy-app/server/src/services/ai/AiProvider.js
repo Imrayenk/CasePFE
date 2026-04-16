@@ -23,6 +23,24 @@ class AiProvider {
     async extractConcepts() {
         throw new Error('Method "extractConcepts" must be implemented.');
     }
+
+    /**
+     * Extracts evidence statements from a case study text.
+     * @param {string} caseContent The full text of the case study
+     * @returns {Promise<Array<string>>} Array of evidence statements
+     */
+    async extractEvidence() {
+        throw new Error('Method "extractEvidence" must be implemented.');
+    }
+
+    /**
+     * Drafts a final submission based on guided step answers.
+     * @param {Object} params
+     * @returns {Promise<string>} The generated final submission text
+     */
+    async draftFinalSubmission() {
+        throw new Error('Method "draftFinalSubmission" must be implemented.');
+    }
 }
 
 module.exports = AiProvider;

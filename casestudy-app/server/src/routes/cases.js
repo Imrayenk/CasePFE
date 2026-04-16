@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
+const authMiddleware = require('../middleware/authMiddleware');
+const { requireRole } = authMiddleware;
 
 // GET /api/cases
 router.get('/', async (req, res) => {
@@ -30,9 +32,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/cases
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
     try {
-        const { title, content, description, status, teacherId, attachments, update_history } = req.body;
+        const { title, content, description, status, attachments, update_history } = req.body;
         const newCase = await prisma.case.create({
             data: {
                 title,
@@ -41,7 +43,7 @@ router.post('/', async (req, res) => {
                 status: status || 'draft',
                 attachments: attachments ? JSON.stringify(attachments) : null,
                 update_history: update_history ? JSON.stringify(update_history) : null,
-                teacherId
+                teacherId: req.user.id
             }
         });
         res.json(newCase);
@@ -52,7 +54,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/cases/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
     try {
         const { title, content, description, status, attachments, update_history } = req.body;
         const updated = await prisma.case.update({
@@ -74,7 +76,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/cases/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
     try {
         const caseId = req.params.id;
 

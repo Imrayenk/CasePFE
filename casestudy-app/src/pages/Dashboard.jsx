@@ -359,7 +359,7 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/50">
-                        {submissions.map(sub => (
+                        {submissions.filter(sub => sub.status !== 'In Progress').map(sub => (
                           <tr key={sub.id} className="hover:bg-slate-800/30 transition-colors">
                             <td className="px-6 py-4 font-semibold text-slate-200">{sub.learnerName}</td>
                             <td className="px-6 py-4 text-slate-400 font-medium text-sm">{sub.caseId}</td>
@@ -372,7 +372,7 @@ const Dashboard = () => {
                                   }
                               </div>
                             </td>
-                            <td className="px-6 py-4 font-bold text-slate-200">{sub.score} / 100</td>
+                            <td className="px-6 py-4 font-bold text-slate-200">{sub.score ?? 'Pending'}{sub.score !== null && sub.score !== undefined ? ' / 100' : ''}</td>
                             <td className="px-6 py-4 text-right">
                               <button 
                                   onClick={() => navigate(`/grading/${sub.id}`)}
@@ -470,39 +470,46 @@ const Dashboard = () => {
             </div>
           )}
           {cases && cases.filter(c => c.status === 'Active').map(c => {
-             const userSub = submissions?.find(s => s.caseId === c.id && s.learnerName === user?.name && (s.status === 'Submitted' || s.status.includes('Graded')));
-             const isCompleted = !!userSub;
+             const userSub = submissions?.find(s => s.caseId === c.id);
+             const isSubmittedForReview = userSub?.status === 'Submitted for Review';
+             const isGraded = userSub?.status?.includes('Graded');
+             const isInProgress = userSub?.status === 'In Progress';
+             const isCompleteOrSubmitted = isSubmittedForReview || isGraded;
              
              return (
               <div 
                 key={c.id} 
-                className={`bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-primary/50 transition-colors shadow-lg cursor-pointer flex flex-col h-full ${isCompleted ? 'opacity-70' : ''}`}
-                onClick={() => navigate(isCompleted ? `/results/${c.id}` : `/workspace/${c.id}`)}
+                className={`bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-primary/50 transition-colors shadow-lg cursor-pointer flex flex-col h-full ${isCompleteOrSubmitted ? 'opacity-80' : ''}`}
+                onClick={() => navigate(isCompleteOrSubmitted ? `/results/${c.id}` : `/workspace/${c.id}`)}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
-                      {isCompleted ? (
+                      {isGraded ? (
                         <>
                           <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-900/30 text-emerald-500 border border-emerald-900/50 uppercase tracking-wider">Completed</span>
                           {userSub.status === 'Graded (Override)' && userSub.overrideHistory?.length > 0 && userSub.overrideHistory[0].oldScore !== userSub.score && (
                              <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50 uppercase tracking-wider" title="Grade naturally overriden by instructor">Override</span>
                           )}
                         </>
+                      ) : isSubmittedForReview ? (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-900/30 text-amber-400 border border-amber-900/50 uppercase tracking-wider">Submitted for Review</span>
+                      ) : isInProgress ? (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-blue-900/30 text-blue-400 border border-blue-900/50 uppercase tracking-wider">In Progress</span>
                       ) : (
                         <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-900/30 text-amber-500 border border-amber-900/50 uppercase tracking-wider">Required</span>
                       )}
                     </div>
                     <span className="text-xs font-semibold text-slate-500 ml-1">Case #{c.id}</span>
                   </div>
-                  {isCompleted ? <FileText size={18} className="text-emerald-500"/> : <BookOpen size={18} className="text-primary"/>}
+                  {isCompleteOrSubmitted ? <FileText size={18} className={isGraded ? 'text-emerald-500' : 'text-amber-400'}/> : <BookOpen size={18} className="text-primary"/>}
                 </div>
-                <h3 className={`text-xl font-bold mb-2 ${isCompleted ? 'text-slate-400' : 'text-slate-200'}`}>{c.title}</h3>
-                <p className={`text-sm mb-6 flex-1 line-clamp-3 ${isCompleted ? 'text-slate-500' : 'text-slate-400'}`}>
+                <h3 className={`text-xl font-bold mb-2 ${isCompleteOrSubmitted ? 'text-slate-400' : 'text-slate-200'}`}>{c.title}</h3>
+                <p className={`text-sm mb-6 flex-1 line-clamp-3 ${isCompleteOrSubmitted ? 'text-slate-500' : 'text-slate-400'}`}>
                   {c.description}
                 </p>
                 
-                {!isCompleted && (
+                {!isCompleteOrSubmitted && (
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800 mt-auto">
                      <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
@@ -538,10 +545,10 @@ const Dashboard = () => {
                      </div>
                   </div>
                 )}
-                {isCompleted && (
+                {isCompleteOrSubmitted && (
                   <div className="mt-auto pt-4 border-t border-slate-800/50">
                     <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm font-semibold hover:bg-slate-700">
-                      View Results
+                      {isSubmittedForReview ? 'View Review Status' : 'View Results'}
                     </button>
                   </div>
                 )}

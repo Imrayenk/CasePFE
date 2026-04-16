@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
+const authMiddleware = require('../middleware/authMiddleware');
+const { requireRole } = authMiddleware;
 
 function parseJsonArray(value) {
     if (!value) return [];
@@ -13,12 +15,157 @@ function parseJsonArray(value) {
     }
 }
 
+function normalizeText(value) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeList(value) {
+    if (Array.isArray(value)) {
+        return value.map(item => normalizeText(item)).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+                return parsed.map(item => normalizeText(typeof item === 'string' ? item : item?.text)).filter(Boolean);
+            }
+        } catch {
+            // Plain strings are accepted below.
+        }
+        return value.trim() ? [value.trim()] : [];
+    }
+    return [];
+}
+
+function stripHtml(html = '') {
+    return html
+        .replace(/<p>|<br\s*\/?>|<li>|<ol>|<ul>|<div>|<h1>|<h2>|<h3>/gi, ' ')
+        .replace(/<\/p>|<\/li>|<\/ol>|<\/ul>|<\/div>|<\/h1>|<\/h2>|<\/h3>/gi, ' ')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/ig, ' ')
+        .replace(/&[a-z]+;/ig, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function countWords(html = '') {
+    const plainText = stripHtml(html);
+    return plainText ? plainText.split(/\s+/).length : 0;
+}
+
+function getGuidedDraftFromBody(body, existing = null) {
+    const source = body.guidedDraft || body;
+    const existingGuided = existing ? getGuidedDraftFromSubmission(existing) : {};
+    const fallbackFinal = body.summary_text || existing?.summary_text || '';
+
+    return {
+        main_problem: normalizeText(source.main_problem ?? source.guided_main_problem ?? existingGuided.main_problem),
+        evidence: normalizeList(source.evidence ?? source.guided_evidence ?? existingGuided.evidence),
+        root_causes: normalizeList(source.root_causes ?? source.guided_root_causes ?? existingGuided.root_causes),
+        possible_solutions: normalizeList(source.possible_solutions ?? source.guided_possible_solutions ?? existingGuided.possible_solutions),
+        recommendation: normalizeText(source.recommendation ?? source.guided_recommendation ?? existingGuided.recommendation),
+        justification: normalizeText(source.justification ?? source.guided_justification ?? existingGuided.justification),
+        final_submission: normalizeText(source.final_submission ?? source.guided_final_submission ?? existingGuided.final_submission ?? fallbackFinal),
+    };
+}
+
+function getGuidedDraftFromSubmission(submission) {
+    return {
+        main_problem: submission.guided_main_problem || '',
+        evidence: parseJsonArray(submission.guided_evidence),
+        root_causes: parseJsonArray(submission.guided_root_causes),
+        possible_solutions: parseJsonArray(submission.guided_possible_solutions),
+        recommendation: submission.guided_recommendation || '',
+        justification: submission.guided_justification || '',
+        final_submission: submission.guided_final_submission || submission.summary_text || '',
+    };
+}
+
+function getMapNodes(body, existing = null) {
+    if (body.draft_nodes !== undefined) {
+        return parseJsonArray(body.draft_nodes);
+    }
+    return existing ? parseJsonArray(existing.draft_nodes) : [];
+}
+
+function getMapEdges(body, existing = null) {
+    if (body.draft_edges !== undefined) {
+        return parseJsonArray(body.draft_edges);
+    }
+    return existing ? parseJsonArray(existing.draft_edges) : [];
+}
+
+function serializeDraftFields(guidedDraft, nodes, edges, status, currentStep) {
+    return {
+        status,
+        summary_text: guidedDraft.final_submission || null,
+        guided_main_problem: guidedDraft.main_problem || null,
+        guided_evidence: JSON.stringify(guidedDraft.evidence || []),
+        guided_root_causes: JSON.stringify(guidedDraft.root_causes || []),
+        guided_possible_solutions: JSON.stringify(guidedDraft.possible_solutions || []),
+        guided_recommendation: guidedDraft.recommendation || null,
+        guided_justification: guidedDraft.justification || null,
+        guided_final_submission: guidedDraft.final_submission || null,
+        current_step: Number.isInteger(currentStep) ? currentStep : 0,
+        draft_nodes: JSON.stringify(nodes || []),
+        draft_edges: JSON.stringify(edges || []),
+        word_count: countWords(guidedDraft.final_submission),
+        keyword_count: Array.isArray(guidedDraft.evidence) ? guidedDraft.evidence.length : 0,
+        node_count: Array.isArray(nodes) ? nodes.length : 0,
+        has_conclusion: Array.isArray(nodes) && nodes.some(node => node.type === 'conclusionNode'),
+    };
+}
+
+function validateGuidedSubmission(guidedDraft, nodes) {
+    const errors = [];
+    if (!guidedDraft.main_problem) errors.push('Main Problem is required.');
+    if (!guidedDraft.evidence?.length) errors.push('At least one Evidence item is required.');
+    if (!guidedDraft.root_causes?.length) errors.push('At least one Root Cause is required.');
+    if (!guidedDraft.possible_solutions?.length) errors.push('At least one Possible Solution is required.');
+    if (!guidedDraft.recommendation) errors.push('Recommendation is required.');
+    if (!guidedDraft.justification) errors.push('Justification is required.');
+    if (!guidedDraft.final_submission) errors.push('Final Submission is required.');
+
+    const nodeTypes = new Set((nodes || []).map(node => node.type));
+    const requiredMapTypes = [
+        ['problemNode', 'Main Problem map node is required.'],
+        ['evidenceNode', 'Evidence map node is required.'],
+        ['causeNode', 'Root Cause map node is required.'],
+        ['solutionNode', 'Possible Solution map node is required.'],
+        ['conclusionNode', 'Recommendation map node is required.'],
+    ];
+    requiredMapTypes.forEach(([type, message]) => {
+        if (!nodeTypes.has(type)) errors.push(message);
+    });
+
+    return errors;
+}
+
+function formatSubmissionDetails(submission) {
+    return {
+        id: submission.id,
+        status: submission.status,
+        final_grade: submission.final_grade,
+        teacher_feedback: submission.teacher_feedback || '',
+        submittedAt: submission.submittedAt,
+        current_step: submission.current_step || 0,
+        summary_text: submission.summary_text || '',
+        draft_nodes: parseJsonArray(submission.draft_nodes),
+        draft_edges: parseJsonArray(submission.draft_edges),
+        guidedDraft: getGuidedDraftFromSubmission(submission),
+        override_history: parseJsonArray(submission.override_history),
+    };
+}
+
 // GET /api/submissions
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     try {
         const { learnerId } = req.query;
         let where = {};
-        if (learnerId) {
+
+        if (req.user.role === 'learner') {
+            where.learnerId = req.user.id;
+        } else if (learnerId) {
             where.learnerId = learnerId;
         }
 
@@ -34,138 +181,152 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/submissions/details/:id
-router.get('/details/:id', async (req, res) => {
+router.get('/details/:id', authMiddleware, async (req, res) => {
     try {
         const submission = await prisma.submission.findUnique({
-            where: { id: req.params.id },
-            select: {
-                summary_text: true,
-                draft_nodes: true,
-                draft_edges: true
-            }
+            where: { id: req.params.id }
         });
 
         if (!submission) {
             return res.status(404).json({ error: 'Submission not found' });
         }
 
-        res.json({
-            summary_text: submission.summary_text || '',
-            draft_nodes: parseJsonArray(submission.draft_nodes),
-            draft_edges: parseJsonArray(submission.draft_edges)
-        });
+        if (req.user.role === 'learner' && submission.learnerId !== req.user.id) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        res.json(formatSubmissionDetails(submission));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 // GET /api/submissions/:caseId/:userId
-router.get('/:caseId/:userId', async (req, res) => {
+router.get('/:caseId/:userId', authMiddleware, async (req, res) => {
     try {
         const { caseId, userId } = req.params;
+        const learnerId = req.user.role === 'learner' ? req.user.id : userId;
         const submission = await prisma.submission.findFirst({
-            where: { caseId, learnerId: userId }
+            where: { caseId, learnerId }
         });
-        res.json(submission || null);
+
+        res.json(submission ? formatSubmissionDetails(submission) : null);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 // POST /api/submissions (Draft / Create)
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, requireRole(['learner']), async (req, res) => {
     try {
-        const { case_id, learner_id, summary_text, draft_nodes, draft_edges, status, word_count, keyword_count, node_count, has_conclusion } = req.body;
-        
-        let existing = await prisma.submission.findFirst({
-            where: { caseId: case_id, learnerId: learner_id }
+        const { case_id } = req.body;
+        if (!case_id) {
+            return res.status(400).json({ error: 'case_id is required.' });
+        }
+
+        const existing = await prisma.submission.findFirst({
+            where: { caseId: case_id, learnerId: req.user.id }
         });
 
+        if (existing && existing.status !== 'in_progress') {
+            return res.json(formatSubmissionDetails(existing));
+        }
+
+        const guidedDraft = getGuidedDraftFromBody(req.body, existing);
+        const nodes = getMapNodes(req.body, existing);
+        const edges = getMapEdges(req.body, existing);
+        const requestedStep = Number(req.body.current_step);
         const data = {
-            summary_text,
-            draft_nodes: draft_nodes ? (typeof draft_nodes === 'string' ? draft_nodes : JSON.stringify(draft_nodes)) : null,
-            draft_edges: draft_edges ? (typeof draft_edges === 'string' ? draft_edges : JSON.stringify(draft_edges)) : null,
-            status,
-            word_count: word_count || 0,
-            keyword_count: keyword_count || 0,
-            node_count: node_count || 0,
-            has_conclusion: has_conclusion || false,
+            ...serializeDraftFields(guidedDraft, nodes, edges, 'in_progress', requestedStep),
             caseId: case_id,
-            learnerId: learner_id
+            learnerId: req.user.id
         };
 
-        let result;
-        if (existing) {
-            result = await prisma.submission.update({
-                where: { id: existing.id },
-                data
-            });
-        } else {
-            result = await prisma.submission.create({
-                data
-            });
-        }
-        res.json(result);
+        const result = existing
+            ? await prisma.submission.update({ where: { id: existing.id }, data })
+            : await prisma.submission.create({ data });
+
+        res.json(formatSubmissionDetails(result));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 // POST /api/submissions/submit
-router.post('/submit', async (req, res) => {
+router.post('/submit', authMiddleware, requireRole(['learner']), async (req, res) => {
     try {
-        const { case_id, learner_id, summary_text, draft_nodes, draft_edges, status, word_count, keyword_count, node_count, has_conclusion } = req.body;
-        
-        let existing = await prisma.submission.findFirst({
-            where: { caseId: case_id, learnerId: learner_id }
+        const { case_id } = req.body;
+        if (!case_id) {
+            return res.status(400).json({ error: 'case_id is required.' });
+        }
+
+        const existing = await prisma.submission.findFirst({
+            where: { caseId: case_id, learnerId: req.user.id }
         });
 
-        const score = Math.min(100, Math.floor((keyword_count * 5) + (node_count * 3) + (has_conclusion ? 10 : 0)));
+        if (existing && existing.status !== 'in_progress') {
+            return res.status(409).json({ error: 'This submission has already been submitted for review.' });
+        }
+
+        const guidedDraft = getGuidedDraftFromBody(req.body, existing);
+        const nodes = getMapNodes(req.body, existing);
+        const edges = getMapEdges(req.body, existing);
+        const validationErrors = validateGuidedSubmission(guidedDraft, nodes);
+
+        if (validationErrors.length > 0) {
+            return res.status(400).json({ error: validationErrors.join(' ') });
+        }
 
         const data = {
-            summary_text,
-            draft_nodes: draft_nodes ? (typeof draft_nodes === 'string' ? draft_nodes : JSON.stringify(draft_nodes)) : null,
-            draft_edges: draft_edges ? (typeof draft_edges === 'string' ? draft_edges : JSON.stringify(draft_edges)) : null,
-            status: status || 'submitted',
-            word_count: word_count || 0,
-            keyword_count: keyword_count || 0,
-            node_count: node_count || 0,
-            has_conclusion: has_conclusion || false,
-            final_grade: score,
+            ...serializeDraftFields(guidedDraft, nodes, edges, 'submitted', 6),
+            final_grade: null,
+            submittedAt: new Date(),
             caseId: case_id,
-            learnerId: learner_id
+            learnerId: req.user.id
         };
 
-        let result;
-        if (existing) {
-            result = await prisma.submission.update({
-                where: { id: existing.id },
-                data
-            });
-        } else {
-            result = await prisma.submission.create({
-                data
-            });
-        }
-        res.json({ result, score });
+        const result = existing
+            ? await prisma.submission.update({ where: { id: existing.id }, data })
+            : await prisma.submission.create({ data });
+
+        res.json({ result: formatSubmissionDetails(result), score: null });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 // PUT /api/submissions/:id/score
-router.put('/:id/score', async (req, res) => {
+router.put('/:id/score', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
     try {
-        const { newScore, history } = req.body;
+        const { newScore, history, teacher_feedback } = req.body;
+        const existing = await prisma.submission.findUnique({
+            where: { id: req.params.id }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Submission not found' });
+        }
+
+        if (existing.status === 'in_progress') {
+            return res.status(400).json({ error: 'Submission must be submitted before it can be graded.' });
+        }
+
+        const grade = Number.parseInt(newScore, 10);
+        if (Number.isNaN(grade) || grade < 0 || grade > 100) {
+            return res.status(400).json({ error: 'Grade must be a number from 0 to 100.' });
+        }
+
+        const firstGrade = existing.final_grade === null || existing.final_grade === undefined || existing.status === 'submitted';
         const updated = await prisma.submission.update({
             where: { id: req.params.id },
             data: {
-                final_grade: newScore,
-                status: 'graded_override',
-                override_history: history ? JSON.stringify(history) : null
+                final_grade: grade,
+                status: firstGrade ? 'graded' : 'graded_override',
+                teacher_feedback: teacher_feedback || null,
+                override_history: history ? JSON.stringify(history) : existing.override_history
             }
         });
-        res.json(updated);
+        res.json(formatSubmissionDetails(updated));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

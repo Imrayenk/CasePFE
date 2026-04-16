@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/authMiddleware');
+const { requireRole } = authMiddleware;
+
+function canEditUser(req, userId) {
+    return req.user?.role === 'admin' || req.user?.id === userId;
+}
 
 // GET /api/users
 router.get('/', authMiddleware, async (req, res) => {
@@ -24,6 +29,9 @@ router.get('/', authMiddleware, async (req, res) => {
 // PUT /api/users/:id/avatar
 router.put('/:id/avatar', authMiddleware, async (req, res) => {
     try {
+        if (!canEditUser(req, req.params.id)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         const { avatar_url } = req.body;
         const user = await prisma.user.update({
             where: { id: req.params.id },
@@ -38,6 +46,9 @@ router.put('/:id/avatar', authMiddleware, async (req, res) => {
 // PUT /api/users/:id/name
 router.put('/:id/name', authMiddleware, async (req, res) => {
     try {
+        if (!canEditUser(req, req.params.id)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         const { name } = req.body;
         const user = await prisma.user.update({
             where: { id: req.params.id },
@@ -50,7 +61,7 @@ router.put('/:id/name', authMiddleware, async (req, res) => {
 });
 
 // PUT /api/users/:id/role
-router.put('/:id/role', authMiddleware, async (req, res) => {
+router.put('/:id/role', authMiddleware, requireRole(['admin']), async (req, res) => {
     try {
         const { role } = req.body;
         const user = await prisma.user.update({

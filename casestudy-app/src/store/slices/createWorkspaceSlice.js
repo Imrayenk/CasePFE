@@ -1,111 +1,175 @@
 import { apiPost } from '../../lib/api';
+import {
+  emptyGuidedDraft,
+  guidedListKeys,
+  getGuidedMissingItems,
+  getGuidedStepCompletion,
+  normalizeGuidedDraft,
+} from '../../lib/guidedCase';
 
-const initialKeywords = [
-  { id: 'k1', text: 'quarterly compliance audit for the fiscal year 2023', category: 'yellow' },
-  { id: 'k2', text: 'minor discrepancies in documentation logs', category: 'blue' },
-  { id: 'k3', text: 'ISO 27001 standards', category: 'yellow' },
-  { id: 'k4', text: 'manual ledger entries', category: 'blue' },
-  { id: 'k5', text: 'operational bottlenecks', category: 'yellow' }
-];
+const mapNodeTypeLabels = {
+  problemNode: 'Main Problem',
+  evidenceNode: 'Evidence',
+  causeNode: 'Root Cause',
+  solutionNode: 'Possible Solution',
+  analysisNode: 'Justification',
+  conclusionNode: 'Recommendation',
+  noteNode: 'Note',
+};
 
-const initialNodes = [
-  { id: '1', type: 'problemNode', position: { x: 80, y: 180 }, data: { label: 'System Latency Spikes' } },
-  { id: '2', type: 'causeNode', position: { x: 380, y: 120 }, data: { label: 'Database Indexing Overload' } },
-  { id: '3', type: 'analysisNode', position: { x: 580, y: 280 }, data: { label: 'Cache-hit ratio dropped to 42% during peak hours.' } },
-  { id: '4', type: 'solutionNode', position: { x: 780, y: 350 }, data: { label: 'Redis Implementation' } },
-  { id: '5', type: 'conclusionNode', position: { x: 450, y: 480 }, data: { label: 'Predicted 30% increase in performance stability after rollout.'} }
-];
-
-const initialEdges = [
-  { id: 'e1-2', source: '1', target: '2' },
-  { id: 'e2-3', source: '2', target: '3' },
-  { id: 'e3-4', source: '3', target: '4' },
-  { id: 'e1-5', source: '1', target: '5' }
-];
+const createMapSummary = (nodes = []) => nodes
+  .map(node => `${mapNodeTypeLabels[node.type] || node.type}: ${node.data?.label || ''}`)
+  .filter(Boolean)
+  .join('\n');
 
 export const createWorkspaceSlice = (set, get) => ({
   caseWorkspaces: {},
-  keywords: [...initialKeywords],
+  keywords: [],
+  guidedDraft: { ...emptyGuidedDraft },
+  activeStepIndex: 0,
   summaryText: '',
-  setSummaryText: (text) => set({ summaryText: text }),
-  appendSummaryText: (text) => set(state => ({ summaryText: state.summaryText + `<p>${text}</p>` })),
-  
-  isGeneratingDraft: false,
-  generateDraft: async () => {
+
+  setActiveStepIndex: (index) => set({ activeStepIndex: index }),
+  setGuidedDraft: (draft) => set({
+    guidedDraft: normalizeGuidedDraft(draft),
+    summaryText: normalizeGuidedDraft(draft).final_submission,
+  }),
+  setGuidedField: (key, value) => set((state) => {
+    const guidedDraft = normalizeGuidedDraft({
+      ...state.guidedDraft,
+      [key]: value,
+    });
+    return {
+      guidedDraft,
+      summaryText: guidedDraft.final_submission,
+    };
+  }),
+  setSummaryText: (text) => set((state) => ({
+    summaryText: text,
+    guidedDraft: normalizeGuidedDraft({
+      ...state.guidedDraft,
+      final_submission: text,
+    }),
+  })),
+  appendSummaryText: (text) => set((state) => {
+    const finalSubmission = `${state.guidedDraft.final_submission || ''}\n\n${text}`.trim();
+    return {
+      summaryText: finalSubmission,
+      guidedDraft: normalizeGuidedDraft({
+        ...state.guidedDraft,
+        final_submission: finalSubmission,
+      }),
+    };
+  }),
+  addGuidedListItem: (key, text) => set((state) => {
+    if (!guidedListKeys.includes(key) || !text.trim()) return {};
+    const guidedDraft = normalizeGuidedDraft(state.guidedDraft);
+    return {
+      guidedDraft: {
+        ...guidedDraft,
+        [key]: [...guidedDraft[key], text.trim()],
+      },
+    };
+  }),
+  removeGuidedListItem: (key, index) => set((state) => {
+    if (!guidedListKeys.includes(key)) return {};
+    const guidedDraft = normalizeGuidedDraft(state.guidedDraft);
+    return {
+      guidedDraft: {
+        ...guidedDraft,
+        [key]: guidedDraft[key].filter((_, itemIndex) => itemIndex !== index),
+      },
+    };
+  }),
+  updateGuidedListItem: (key, index, value) => set((state) => {
+    if (!guidedListKeys.includes(key)) return {};
+    const guidedDraft = normalizeGuidedDraft(state.guidedDraft);
+    return {
+      guidedDraft: {
+        ...guidedDraft,
+        [key]: guidedDraft[key].map((item, itemIndex) => itemIndex === index ? value : item),
+      },
+    };
+  }),
+  addSelectedTextToEvidence: (text) => {
+    get().addGuidedListItem('evidence', text);
+    get().addKeyword?.(text, 'blue');
+  },
+  copySelectionToCurrentStep: (text) => {
     const state = get();
-    
-    if (state.keywords.length === 0 && state.nodes.length === 0) {
-        set({ summaryText: '<p><em>Please extract some keywords from the case study or build a Concept Map first so I can generate a tailored draft.</em></p>' });
-        return;
+    const stepKey = ['main_problem', 'evidence', 'root_causes', 'possible_solutions', 'recommendation', 'justification', 'final_submission'][state.activeStepIndex] || 'evidence';
+    if (guidedListKeys.includes(stepKey)) {
+      state.addGuidedListItem(stepKey, text);
+      return;
     }
+    const current = state.guidedDraft[stepKey] || '';
+    state.setGuidedField(stepKey, `${current}\n${text}`.trim());
+  },
 
-    set({ isGeneratingDraft: true, summaryText: '<p><em>Synthesizing your workspace data using local AI...</em></p>' });
-    
+  getStepCompletion: () => getGuidedStepCompletion(get().guidedDraft, get().nodes),
+  canSubmitGuidedCase: () => getGuidedMissingItems(get().guidedDraft, get().nodes).length === 0,
+  getGuidedMissingItems: () => getGuidedMissingItems(get().guidedDraft, get().nodes),
+
+  isGeneratingDraft: false,
+  generateDraft: async () => get().generateFinalSubmission(),
+  generateFinalSubmission: async () => {
+    const state = get();
+    set({ isGeneratingDraft: true });
+
     try {
-        let logicalMapString = '';
-        
-        const problems = state.nodes.filter(n => n.type === 'problemNode');
-        if (problems.length > 0) logicalMapString += `Identified Problem(s): ${problems.map(n => n.data.label).join('; ')}\n`;
-
-        const causes = state.nodes.filter(n => n.type === 'causeNode');
-        if (causes.length > 0) logicalMapString += `Root Cause(s): ${causes.map(n => n.data.label).join('; ')}\n`;
-
-        const analyses = state.nodes.filter(n => n.type === 'analysisNode');
-        if (analyses.length > 0) logicalMapString += `Analysis: ${analyses.map(n => n.data.label).join('; ')}\n`;
-
-        const evidence = state.nodes.filter(n => n.type === 'evidenceNode');
-        if (evidence.length > 0) logicalMapString += `Supporting Evidence: ${evidence.map(n => n.data.label).join('; ')}\n`;
-
-        const solutions = state.nodes.filter(n => n.type === 'solutionNode');
-        if (solutions.length > 0) logicalMapString += `Proposed Solution(s): ${solutions.map(n => n.data.label).join('; ')}\n`;
-
-        const conclusions = state.nodes.filter(n => n.type === 'conclusionNode');
-        if (conclusions.length > 0) logicalMapString += `Conclusion: ${conclusions.map(n => n.data.label).join('; ')}\n`;
-
-        const notes = state.nodes.filter(n => n.type === 'noteNode');
-        if (notes.length > 0) logicalMapString += `Additional Notes: ${notes.map(n => n.data.label).join('; ')}\n`;
-
-        const payload = {
+        const result = await apiPost('/ai/final-submission', {
             caseContent: state.currentCase?.content || state.currentCase?.description || 'No case content provided.',
-            keywords: state.keywords.map(k => k.text),
-            logicalMapString
-        };
+            guidedDraft: state.guidedDraft,
+            mapSummary: createMapSummary(state.nodes),
+        });
 
-        const result = await apiPost('/ai/draft', payload);
-        set({ summaryText: result.draftHtml, isGeneratingDraft: false });
+        const finalSubmission = result.finalSubmission || '';
+        set((current) => ({
+          summaryText: finalSubmission,
+          guidedDraft: normalizeGuidedDraft({
+            ...current.guidedDraft,
+            final_submission: finalSubmission,
+          }),
+          isGeneratingDraft: false,
+        }));
     } catch (error) {
-        console.error("AI Generation Error:", error);
-        set({ summaryText: `<p><em>Error generating draft: ${error.message}. Please check that the local AI backend is running and try again.</em></p>`, isGeneratingDraft: false });
+        console.error("AI Final Submission Error:", error);
+        get().addNotification?.('AI Draft Unavailable', 'Manual solving is still available, and your saved work was not changed.');
+        set({ isGeneratingDraft: false });
     }
   },
 
   isExtractingConcepts: false,
-  extractConceptsAI: async () => {
+  extractConceptsAI: async () => get().extractEvidenceAI(),
+  extractEvidenceAI: async () => {
     const state = get();
-    
     const caseContent = state.currentCase?.content || state.currentCase?.description || '';
     if (!caseContent) return;
 
     set({ isExtractingConcepts: true });
     
     try {
-        const payload = { caseContent };
-        const result = await apiPost('/ai/concepts', payload);
-        const extracted = result.concepts;
-        
-        if (Array.isArray(extracted)) {
-            const newKeywords = extracted.map((kw, i) => ({
-                id: 'ai-k' + Date.now() + '-' + i,
-                text: kw.text,
-                category: kw.category === 'blue' ? 'blue' : 'yellow'
-            }));
-            set(state => ({ keywords: [...state.keywords, ...newKeywords], isExtractingConcepts: false }));
-        } else {
-            set({ isExtractingConcepts: false });
-        }
+        const result = await apiPost('/ai/evidence', { caseContent });
+        const evidence = Array.isArray(result.evidence) ? result.evidence : [];
+        set((current) => ({
+          guidedDraft: normalizeGuidedDraft({
+            ...normalizeGuidedDraft(current.guidedDraft),
+            evidence: [...normalizeGuidedDraft(current.guidedDraft).evidence, ...evidence],
+          }),
+          keywords: [
+            ...current.keywords,
+            ...evidence.map((text, index) => ({
+              id: `ai-evidence-${Date.now()}-${index}`,
+              text,
+              category: 'blue',
+            })),
+          ],
+          isExtractingConcepts: false,
+        }));
     } catch (error) {
-        console.error("AI Extraction Error:", error);
-        set({ summaryText: `<p><em>Error extracting concepts: ${error.message}. Check console for details.</em></p>`, isExtractingConcepts: false });
+        console.error("AI Evidence Extraction Error:", error);
+        get().addNotification?.('AI Evidence Unavailable', 'You can keep adding evidence manually from the case reader.');
+        set({ isExtractingConcepts: false });
     }
   },
   
@@ -116,8 +180,8 @@ export const createWorkspaceSlice = (set, get) => ({
     keywords: state.keywords.filter(k => k.id !== id)
   })),
 
-  nodes: [...initialNodes],
-  edges: [...initialEdges],
+  nodes: [],
+  edges: [],
   setNodes: (nodes) => set({ nodes: typeof nodes === 'function' ? nodes(get().nodes) : nodes }),
   setEdges: (edges) => set({ edges: typeof edges === 'function' ? edges(get().edges) : edges }),
   updateNodeLabel: (nodeId, newLabel) => set((state) => ({
@@ -131,9 +195,11 @@ export const createWorkspaceSlice = (set, get) => ({
   
   resetWorkspaceToInitial: () => {
      set({
-        keywords: [...initialKeywords],
-        nodes: [...initialNodes],
-        edges: [...initialEdges],
+        keywords: [],
+        guidedDraft: { ...emptyGuidedDraft },
+        activeStepIndex: 0,
+        nodes: [],
+        edges: [],
         summaryText: ''
      });
   }

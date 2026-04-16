@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/api';
+import { emptyGuidedDraft, getGuidedMissingItems, normalizeGuidedDraft } from '../../lib/guidedCase';
 
 const parseJsonValue = (value, fallback) => {
     if (!value) return fallback;
@@ -99,52 +100,33 @@ export const createCaseSlice = (set, get) => ({
     if (state.currentCase) {
        newCaseWorkspaces[state.currentCase.id] = {
           keywords: state.keywords,
+          guidedDraft: state.guidedDraft,
+          activeStepIndex: state.activeStepIndex,
           summaryText: state.summaryText,
           nodes: state.nodes,
           edges: state.edges
        };
     }
 
-    const initialKeywords = [
-        { id: 'k1', text: 'quarterly compliance audit for the fiscal year 2023', category: 'yellow' },
-        { id: 'k2', text: 'minor discrepancies in documentation logs', category: 'blue' },
-        { id: 'k3', text: 'ISO 27001 standards', category: 'yellow' },
-        { id: 'k4', text: 'manual ledger entries', category: 'blue' },
-        { id: 'k5', text: 'operational bottlenecks', category: 'yellow' }
-    ];
-      
-    const initialNodes = [
-        { id: '1', type: 'problemNode', position: { x: 80, y: 180 }, data: { label: 'System Latency Spikes' } },
-        { id: '2', type: 'causeNode', position: { x: 380, y: 120 }, data: { label: 'Database Indexing Overload' } },
-        { id: '3', type: 'analysisNode', position: { x: 580, y: 280 }, data: { label: 'Cache-hit ratio dropped to 42% during peak hours.' } },
-        { id: '4', type: 'solutionNode', position: { x: 780, y: 350 }, data: { label: 'Redis Implementation' } },
-        { id: '5', type: 'conclusionNode', position: { x: 450, y: 480 }, data: { label: 'Predicted 30% increase in performance stability after rollout.'} }
-    ];
-      
-    const initialEdges = [
-        { id: 'e1-2', source: '1', target: '2' },
-        { id: 'e2-3', source: '2', target: '3' },
-        { id: 'e3-4', source: '3', target: '4' },
-        { id: 'e1-5', source: '1', target: '5' }
-    ];
-
-    const targetCaseWorkspace = newCaseWorkspaces[id] || (id === '8429-CR' ? {
-       keywords: [...initialKeywords],
-       summaryText: '',
-       nodes: [...initialNodes],
-       edges: [...initialEdges]
-    } : {
+    const targetCaseWorkspace = newCaseWorkspaces[id] || {
        keywords: [],
+       guidedDraft: { ...emptyGuidedDraft },
+       activeStepIndex: 0,
        summaryText: '',
        nodes: [],
        edges: []
+    };
+    const normalizedGuidedDraft = normalizeGuidedDraft(targetCaseWorkspace.guidedDraft || {
+       final_submission: targetCaseWorkspace.summaryText || ''
     });
 
     return { 
        currentCase: state.cases.find(c => c.id === id) || null,
        caseWorkspaces: newCaseWorkspaces,
        keywords: targetCaseWorkspace.keywords,
-       summaryText: targetCaseWorkspace.summaryText,
+       guidedDraft: normalizedGuidedDraft,
+       activeStepIndex: targetCaseWorkspace.activeStepIndex || 0,
+       summaryText: normalizedGuidedDraft.final_submission || targetCaseWorkspace.summaryText || '',
        nodes: targetCaseWorkspace.nodes,
        edges: targetCaseWorkspace.edges
     };
@@ -165,13 +147,15 @@ export const createCaseSlice = (set, get) => ({
                      id: s.id,
                      learnerName: s.learner?.name || 'Unknown Learner',
                      caseId: s.caseId,
-                     status: s.status === 'in_progress' ? 'In Progress' : (s.status === 'submitted' ? 'Submitted' : (s.status === 'graded' ? 'Graded' : 'Graded (Override)')),
-                     score: s.final_grade || 0,
+                     status: s.status === 'in_progress' ? 'In Progress' : (s.status === 'submitted' ? 'Submitted for Review' : (s.status === 'graded' ? 'Graded' : 'Graded (Override)')),
+                     score: s.final_grade,
                      date: new Date(s.createdAt).toISOString().split('T')[0],
+                     submittedAt: s.submittedAt,
                      wordCount: s.word_count || 0,
                      keywords: s.keyword_count || 0,
                      nodes: s.node_count || 0,
                      hasConclusion: s.has_conclusion || false,
+                     teacherFeedback: s.teacher_feedback || '',
                      overrideHistory: parsedHistory
                  };
              });
@@ -181,22 +165,23 @@ export const createCaseSlice = (set, get) => ({
          console.error("fetchSubmissions error:", error);
      }
   },
-  updateSubmissionScore: async (id, newScore) => {
+  updateSubmissionScore: async (id, newScore, teacherFeedback = '') => {
      const state = get();
      const sub = state.submissions.find(s => s.id === id);
-     const oldScore = sub ? sub.score : 0;
+     const oldScore = sub?.score ?? null;
      const history = sub ? [...(sub.overrideHistory || [])] : [];
      
-     const newEntry = {
-         timestamp: new Date().toISOString(),
-         oldScore: oldScore,
-         newScore: newScore,
-         teacherName: state.user?.name || 'Instructor'
-     };
-     history.push(newEntry);
+     if (oldScore !== null && oldScore !== Number(newScore)) {
+         history.push({
+             timestamp: new Date().toISOString(),
+             oldScore,
+             newScore,
+             teacherName: state.user?.name || 'Instructor'
+         });
+     }
 
      try {
-         await apiPut(`/submissions/${id}/score`, { newScore, history });
+         await apiPut(`/submissions/${id}/score`, { newScore, history, teacher_feedback: teacherFeedback });
          await get().fetchSubmissions();
          return { success: true };
      } catch (error) {
@@ -211,27 +196,16 @@ export const createCaseSlice = (set, get) => ({
      const state = get();
      if (!state.currentCase?.id || !state.user?.id) return;
 
-     let wordCount = currentWordCount;
-     if (wordCount === undefined) {
-         const spacedHtml = state.summaryText
-            .replace(/<p>|<br\s*\/?>|<li>|<ol>|<ul>|<div>|<h1>|<h2>|<h3>/gi, ' ')
-            .replace(/<\/p>|<\/li>|<\/ol>|<\/ul>|<\/div>|<\/h1>|<\/h2>|<\/h3>/gi, ' ')
-            .replace(/<[^>]*>/g, '') 
-            .replace(/&nbsp;/ig, ' ')
-            .replace(/&[a-z]+;/ig, ' '); 
-         const plainText = spacedHtml.replace(/\s+/g, ' ').trim();
-         wordCount = plainText === '' ? 0 : plainText.split(/\s+/).length;
-     }
-
      try {
          await apiPost('/submissions', {
              case_id: state.currentCase.id,
-             learner_id: state.user.id,
-             summary_text: state.summaryText,
+             guidedDraft: state.guidedDraft,
+             summary_text: state.guidedDraft.final_submission,
              draft_nodes: state.nodes,
              draft_edges: state.edges,
+             current_step: state.activeStepIndex,
              status: 'in_progress',
-             word_count: wordCount
+             word_count: currentWordCount || 0
          });
          if (!silent) Object.keys(state).includes('addNotification') && state.addNotification('Draft Saved', `Your progress on ${state.currentCase.title} has been backed up.`);
      } catch (error) {
@@ -245,13 +219,14 @@ export const createCaseSlice = (set, get) => ({
      try {
          const data = await apiGet(`/submissions/${caseId}/${state.user.id}`);
          if (data && data.status === 'in_progress') {
-             if (data.summary_text) set({ summaryText: data.summary_text });
-             if (data.draft_nodes) {
-                 set({ nodes: parseJsonValue(data.draft_nodes, []) });
-             }
-             if (data.draft_edges) {
-                 set({ edges: parseJsonValue(data.draft_edges, []) });
-             }
+             const guidedDraft = normalizeGuidedDraft(data.guidedDraft || {});
+             set({
+                 guidedDraft,
+                 summaryText: guidedDraft.final_submission || data.summary_text || '',
+                 activeStepIndex: data.current_step || 0,
+                 nodes: parseJsonValue(data.draft_nodes, []),
+                 edges: parseJsonValue(data.draft_edges, [])
+             });
          }
      } catch (error) {
          console.error("fetchDraft error:", error);
@@ -260,19 +235,10 @@ export const createCaseSlice = (set, get) => ({
   submitAssignment: async () => {
     try {
       const state = get();
-      
-      const spacedHtml = state.summaryText
-          .replace(/<p>|<br\s*\/?>|<li>|<ol>|<ul>|<div>|<h1>|<h2>|<h3>/gi, ' ')
-          .replace(/<\/p>|<\/li>|<\/ol>|<\/ul>|<\/div>|<\/h1>|<\/h2>|<\/h3>/gi, ' ')
-          .replace(/<[^>]*>/g, '') 
-          .replace(/&nbsp;/ig, ' ')
-          .replace(/&[a-z]+;/ig, ' '); 
-          
-      const plainText = spacedHtml.replace(/\s+/g, ' ').trim();
-      const wordCount = plainText === '' ? 0 : plainText.split(/\s+/).length;
-      const keywordCount = state.keywords.length;
-      const nodeCount = state.nodes.length;
-      const hasConclusion = state.nodes.some(n => n.type === 'conclusionNode');
+      const missingItems = getGuidedMissingItems(state.guidedDraft, state.nodes);
+      if (missingItems.length > 0) {
+        throw new Error(`Complete these items before submitting: ${missingItems.join(', ')}`);
+      }
 
       if (!state.user?.id || !state.currentCase?.id) {
         throw new Error("Missing user or case information. Please try refreshing.");
@@ -280,30 +246,31 @@ export const createCaseSlice = (set, get) => ({
 
       const result = await apiPost('/submissions/submit', {
           case_id: state.currentCase.id,
-          learner_id: state.user.id,
-          summary_text: state.summaryText,
-          draft_keywords: state.keywords,
+          guidedDraft: state.guidedDraft,
+          summary_text: state.guidedDraft.final_submission,
           draft_nodes: state.nodes,
           draft_edges: state.edges,
-          word_count: wordCount,
-          keyword_count: keywordCount,
-          node_count: nodeCount,
-          has_conclusion: hasConclusion
+          current_step: 6
       });
 
-      const score = result.score || 0;
       get().fetchSubmissions();
 
       if (Object.keys(state).includes('addNotification')) {
-          state.addNotification('Case Submitted', `You scored ${score}/100 on ${state.currentCase?.title || 'Case Study'}`);
+          state.addNotification('Case Submitted', `${state.currentCase?.title || 'Case Study'} has been sent for teacher review.`);
           const learnerName = state.user?.name || 'Anonymous Learner';
           const caseTitle = state.currentCase?.title || 'Case Study';
           state.usersDb.filter(u => u.role === 'teacher').forEach(teacher => {
-            state.addNotification('New Submission', `${learnerName} submitted ${caseTitle} with a score of ${score}/100.`, teacher.id);
+            state.addNotification('New Submission', `${learnerName} submitted ${caseTitle} for review.`, teacher.id);
           });
       }
       
-      const fullResult = { score, wordCount, keywordCount, nodeCount, hasConclusion };
+      const fullResult = {
+        score: result.score,
+        status: 'Submitted for Review',
+        guidedDraft: state.guidedDraft,
+        nodeCount: state.nodes.length,
+        teacherFeedback: '',
+      };
       set({ submissionResult: fullResult });
       return fullResult;
     } catch (error) {

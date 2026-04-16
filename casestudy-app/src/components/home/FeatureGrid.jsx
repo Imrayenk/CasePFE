@@ -14,8 +14,8 @@ const features = [
   },
   {
     icon: <Award className="w-8 h-8 text-amber-400" />,
-    title: "Real-time AI Grading",
-    description: "Submit your final write-up and receive instant feedback, structural analysis, and an objective score based on predefined rubric metrics."
+    title: "Teacher Review",
+    description: "Submit the final case solution for instructor feedback, grading, and clear next steps after review."
   },
   {
     icon: <ShieldCheck className="w-8 h-8 text-teal-400" />,
@@ -29,8 +29,8 @@ const features = [
   },
   {
     icon: <PenTool className="w-8 h-8 text-emerald-400" />,
-    title: "Rich Text Editing",
-    description: "Draft, format, and polish your compliance review directly inside the platform with our comprehensive text editor tools."
+    title: "Guided Case Solving",
+    description: "Move from main problem to evidence, root causes, solutions, recommendation, justification, and final submission."
   }
 ];
 

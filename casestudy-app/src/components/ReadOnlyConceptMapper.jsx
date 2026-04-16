@@ -62,7 +62,7 @@ const ProblemNode = ({ data }) => (
   <div className="relative w-56 bg-slate-900 border-l-4 border-rose-500 rounded-xl shadow-2xl p-4 border-slate-800 border">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0 disabled opacity-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent data={data} typeColor="text-rose-500" typeLabel="Problem" />
+      <NodeContent data={data} typeColor="text-rose-500" typeLabel="Main Problem" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-rose-500 z-20 opacity-0" />
   </div>
@@ -72,7 +72,7 @@ const CauseNode = ({ data }) => (
   <div className="relative w-56 bg-slate-900 border-l-4 border-amber-500 rounded-xl shadow-2xl p-4 border-slate-800 border">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0 disabled opacity-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent data={data} typeColor="text-amber-500" typeLabel="Cause" />
+      <NodeContent data={data} typeColor="text-amber-500" typeLabel="Root Cause" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-amber-500 z-20 opacity-0" />
   </div>
@@ -82,7 +82,7 @@ const AnalysisNode = ({ data }) => (
   <div className="relative w-64 bg-slate-900 border-l-4 border-primary rounded-xl shadow-2xl p-4 border-2 border-primary/20">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0 disabled opacity-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent data={data} typeColor="text-primary" typeLabel="Analysis" />
+      <NodeContent data={data} typeColor="text-primary" typeLabel="Justification" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-primary z-20 opacity-0" />
   </div>
@@ -92,7 +92,7 @@ const SolutionNode = ({ data }) => (
   <div className="relative w-56 bg-slate-900 border-l-4 border-emerald-500 rounded-xl shadow-2xl p-4 border-slate-800 border">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0 disabled opacity-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent data={data} typeColor="text-emerald-500" typeLabel="Solution" />
+      <NodeContent data={data} typeColor="text-emerald-500" typeLabel="Possible Solution" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-emerald-500 z-20 opacity-0" />
   </div>
@@ -129,7 +129,7 @@ const ConclusionNode = ({ data }) => {
       <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0 disabled opacity-0" />
       <div className="relative z-10 w-full h-full">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Conclusion</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recommendation</span>
         </div>
         <p className="text-sm font-semibold cursor-default">{data.label}</p>
       </div>

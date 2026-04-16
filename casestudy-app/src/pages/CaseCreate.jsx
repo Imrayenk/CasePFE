@@ -195,7 +195,7 @@ const CaseCreate = () => {
           
           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
              <p className="text-sm text-slate-400">
-                <strong className="text-slate-200">Note:</strong> Keywords and Concept Map expected topologies will be generated automatically in the backend Evaluation Engine once this is saved.
+                <strong className="text-slate-200">Note:</strong> Learners will solve this case through the guided steps and submit a required concept map for teacher review.
              </p>
           </div>
         </section>

@@ -102,6 +102,52 @@ class OllamaProvider extends AiProvider {
             throw new Error('Invalid JSON format returned from LLM. Response was: ' + responseText);
         }
     }
+
+    async extractEvidence(caseContent) {
+        const systemPrompt = "You help students identify evidence in a case study.\nReturn STRICTLY a JSON array of 3 to 6 short evidence strings. Evidence should be direct facts, metrics, events, constraints, or quotes from the case. Do not include analysis or recommendations.";
+        const userPrompt = `Extract the strongest evidence from this case study:\n\n--- CASE STUDY CONTEXT ---\n${caseContent}`;
+        const responseText = await this._generateResponse(systemPrompt, userPrompt, true);
+
+        try {
+            let cleanText = responseText.replace(/```json|```/gi, '').trim();
+            const firstBracket = cleanText.indexOf('[');
+            const lastBracket = cleanText.lastIndexOf(']');
+            if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+                cleanText = cleanText.substring(firstBracket, lastBracket + 1);
+            }
+
+            const extracted = JSON.parse(cleanText);
+            return Array.isArray(extracted)
+                ? extracted.map(item => typeof item === 'string' ? item : item.text).filter(Boolean)
+                : [];
+        } catch {
+            console.error('Failed to parse Ollama evidence response:', responseText);
+            throw new Error('Invalid JSON format returned from LLM. Response was: ' + responseText);
+        }
+    }
+
+    async draftFinalSubmission({ caseContent, guidedDraft, mapSummary }) {
+        const systemPrompt = "You are a case-solving writing assistant.\nCreate a concise final submission using the learner's guided answers. Do not invent facts. Use clear paragraphs. Return plain text only, no markdown fences.";
+        const userPrompt = [
+            `--- CASE STUDY CONTEXT ---`,
+            caseContent,
+            ``,
+            `--- GUIDED ANSWERS ---`,
+            `Main Problem: ${guidedDraft.main_problem || ''}`,
+            `Evidence: ${(guidedDraft.evidence || []).join('; ')}`,
+            `Root Causes: ${(guidedDraft.root_causes || []).join('; ')}`,
+            `Possible Solutions: ${(guidedDraft.possible_solutions || []).join('; ')}`,
+            `Recommendation: ${guidedDraft.recommendation || ''}`,
+            `Justification: ${guidedDraft.justification || ''}`,
+            ``,
+            `--- CONCEPT MAP SUMMARY ---`,
+            mapSummary || '',
+            ``,
+            `Write the learner's final submission in 2 to 4 focused paragraphs.`
+        ].join('\n');
+
+        return this._generateResponse(systemPrompt, userPrompt);
+    }
 }
 
 module.exports = OllamaProvider;

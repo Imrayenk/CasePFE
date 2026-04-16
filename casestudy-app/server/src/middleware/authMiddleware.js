@@ -17,4 +17,14 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
+const requireRole = (allowedRoles) => (req, res, next) => {
+    const role = req.user?.role;
+    if (!role || !allowedRoles.includes(role)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+};
+
+authMiddleware.requireRole = requireRole;
+
 module.exports = authMiddleware;

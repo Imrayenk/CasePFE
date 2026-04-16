@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, Clock, MessageSquare } from 'lucide-react';
 
 const Results = () => {
   const navigate = useNavigate();
@@ -9,26 +9,11 @@ const Results = () => {
   const { submissionResult, submissions, fetchSubmissions } = useStore();
 
   useEffect(() => {
-    if (submissions.length === 0) {
-      fetchSubmissions();
-    }
-  }, [submissions.length, fetchSubmissions]);
+    fetchSubmissions();
+  }, [fetchSubmissions]);
 
-  let activeResult = submissionResult;
-  if (!activeResult && id) {
-     const existingSub = submissions.find(s => s.caseId === id);
-     if (existingSub) {
-         activeResult = {
-             score: existingSub.score,
-             wordCount: existingSub.wordCount,
-             keywordCount: existingSub.keywords,
-             nodeCount: existingSub.nodes,
-             hasConclusion: existingSub.hasConclusion,
-             status: existingSub.status,
-             overrideHistory: existingSub.overrideHistory
-         };
-     }
-  }
+  const existingSub = id ? submissions.find(s => s.caseId === id) : null;
+  const activeResult = existingSub || submissionResult;
 
   if (!activeResult) {
     return (
@@ -43,12 +28,10 @@ const Results = () => {
     );
   }
 
-  const { score, wordCount, keywordCount, nodeCount, hasConclusion, status, overrideHistory } = activeResult;
-
-  const hasHistory = status === 'Graded (Override)' && overrideHistory?.length > 0;
-  const originalGrade = hasHistory ? overrideHistory[0].oldScore : null;
-  const isOverridden = hasHistory && originalGrade !== score;
-  const displayOriginal = isOverridden;
+  const isPending = activeResult.status === 'Submitted for Review' || activeResult.status === 'submitted';
+  const isGraded = activeResult.status?.includes?.('Graded') || activeResult.status === 'graded' || activeResult.status === 'graded_override';
+  const score = activeResult.score;
+  const feedback = activeResult.teacherFeedback || '';
 
   return (
     <div className="flex-1 flex flex-col bg-background-dark p-8 overflow-y-auto">
@@ -58,61 +41,58 @@ const Results = () => {
         </button>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-10 flex flex-col items-center text-center">
-            <div className={`size-24 rounded-full flex items-center justify-center mb-6 shadow-xl ${score >= 70 ? 'bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-2 border-amber-500/30'}`}>
-                <CheckCircle size={48} />
+            <div className={`size-24 rounded-full flex items-center justify-center mb-6 shadow-xl ${
+              isPending
+                ? 'bg-amber-500/20 text-amber-400 border-2 border-amber-500/30'
+                : 'bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/30'
+            }`}>
+                {isPending ? <Clock size={48} /> : <CheckCircle size={48} />}
             </div>
             
-            <h1 className="text-4xl font-bold text-slate-100 mb-2">Evaluation Complete</h1>
-            {isOverridden ? (
-                <p className="text-purple-400 mb-10 text-lg font-medium flex items-center justify-center gap-2">
-                    <AlertTriangle size={20} /> Your final grade was manually reviewed and overridden by your instructor.
-                </p>
-            ) : (
-                <p className="text-slate-400 mb-10 text-lg">Your submission has been automatically graded by the evaluation engine.</p>
-            )}
+            <h1 className="text-4xl font-bold text-slate-100 mb-2">
+              {isPending ? 'Submitted for Review' : 'Review Complete'}
+            </h1>
+            <p className="text-slate-400 mb-10 text-lg">
+              {isPending
+                ? 'Your guided case solution has been sent to your instructor. Your grade will appear here after review.'
+                : 'Your instructor has reviewed your guided case solution.'}
+            </p>
             
             <div className="w-full bg-slate-800/50 rounded-xl p-8 border border-slate-700">
                 <div className="flex justify-between items-center mb-8 border-b border-slate-700 pb-8">
-                    <span className="text-xl font-bold text-slate-300 flex items-center gap-3">
-                        Final Grade
-                        {isOverridden && <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50 uppercase tracking-wider">Teacher Override</span>}
+                    <span className="text-xl font-bold text-slate-300">Status</span>
+                    <span className={`px-3 py-1 rounded-lg text-sm font-bold border ${
+                      isPending
+                        ? 'bg-amber-900/30 text-amber-400 border-amber-900/50'
+                        : 'bg-emerald-900/30 text-emerald-400 border-emerald-900/50'
+                    }`}>
+                      {activeResult.status}
                     </span>
-                    <div className="flex items-center gap-6">
-                        {displayOriginal && (
-                            <>
-                                <div className="flex flex-col items-end opacity-70">
-                                  <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-0.5">Original</span>
-                                  <span className="text-2xl font-bold text-slate-500 line-through decoration-rose-500/50 decoration-2">{originalGrade}</span>
-                                </div>
-                                <div className="h-10 w-px bg-slate-700"></div>
-                            </>
-                        )}
-                        <span className={`text-5xl font-extrabold ${score >= 70 ? 'text-emerald-400' : 'text-amber-400'}`}>{score} <span className="text-2xl text-slate-500">/ 100</span></span>
-                    </div>
                 </div>
-                
-                <div className="space-y-6 text-left">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="font-semibold text-slate-200 block text-lg">Keyword Extraction (40%)</span>
-                            <span className="text-sm text-slate-500 font-medium">{keywordCount} distinct keywords selected</span>
-                        </div>
-                        <span className="text-xl font-bold text-blue-400">+{Math.min(keywordCount*8, 40)} pts</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="font-semibold text-slate-200 block text-lg">Summary Validation (30%)</span>
-                            <span className="text-sm text-slate-500 font-medium">Word count: {wordCount} (Target: 50-200)</span>
-                        </div>
-                        <span className="text-xl font-bold text-blue-400">+{wordCount >= 50 && wordCount <= 200 ? 30 : (wordCount > 0 ? 15 : 0)} pts</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="font-semibold text-slate-200 block text-lg">Concept Mapping Logic (30%)</span>
-                            <span className="text-sm text-slate-500 font-medium">{nodeCount} Nodes placed, Conclusion: {hasConclusion ? 'Yes' : 'No'}</span>
-                        </div>
-                        <span className="text-xl font-bold text-blue-400">+{Math.min(nodeCount*5, 20) + (hasConclusion ? 10 : 0)} pts</span>
-                    </div>
+
+                {isGraded && (
+                  <div className="flex justify-between items-center mb-8 border-b border-slate-700 pb-8">
+                    <span className="text-xl font-bold text-slate-300">Final Grade</span>
+                    <span className={`text-5xl font-extrabold ${(score ?? 0) >= 70 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {score ?? '--'} <span className="text-2xl text-slate-500">/ 100</span>
+                    </span>
+                  </div>
+                )}
+
+                <div className="text-left">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare size={18} className="text-primary" />
+                    <h2 className="text-lg font-bold text-slate-200">Teacher Feedback</h2>
+                  </div>
+                  <div className="rounded-xl bg-slate-900/70 border border-slate-700 p-5 min-h-28">
+                    {feedback ? (
+                      <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{feedback}</p>
+                    ) : (
+                      <p className="text-slate-500 italic">
+                        {isPending ? 'Feedback will appear after your instructor reviews the submission.' : 'No written feedback was provided.'}
+                      </p>
+                    )}
+                  </div>
                 </div>
             </div>
         </div>

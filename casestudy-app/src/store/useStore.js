@@ -29,6 +29,8 @@ const useStore = create(
         caseWorkspaces: state.caseWorkspaces,
         
         // Only persist current active workspace drafting so refresh doesn't wipe unsaved nodes
+        guidedDraft: state.guidedDraft,
+        activeStepIndex: state.activeStepIndex,
         summaryText: state.summaryText, 
         nodes: state.nodes, 
         edges: state.edges,

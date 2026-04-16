@@ -3,7 +3,7 @@ import useStore from '../store/useStore';
 import { Search, Download, ZoomIn, ZoomOut, Copy, Edit3, Paperclip, FileText, List, ChevronRight, ChevronUp, ChevronDown, Settings } from 'lucide-react';
 
 const CaseReader = () => {
-  const { currentCase, addKeyword, appendSummaryText, keywords } = useStore();
+  const { currentCase, addKeyword, addSelectedTextToEvidence, copySelectionToCurrentStep, keywords } = useStore();
   const readerRef = useRef(null);
   
   const [selection, setSelection] = useState({ text: '', x: 0, y: 0, show: false });
@@ -366,27 +366,27 @@ const CaseReader = () => {
             className="fixed bg-slate-950 text-white rounded-xl shadow-2xl p-1.5 flex gap-1 flex-col items-center border border-slate-700 animate-in fade-in zoom-in duration-200 z-50"
             style={{ left: selection.x, top: selection.y, transform: 'translate(-50%, -100%)' }}
           >
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-1">Extract Concept</div>
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-1">Use Selection</div>
             <div className="flex items-center gap-1 p-1">
                 <button 
-                  onClick={() => handleAddKeyword('yellow')}
+                  onClick={() => { addSelectedTextToEvidence(selection.text); clearSelection(); }}
                   className="p-2 hover:bg-slate-800 rounded-lg text-amber-500 transition-colors"
-                  title="Highlight Yellow"
+                  title="Add as Evidence"
                 >
                   <Edit3 size={18} />
                 </button>
                 <button 
                   onClick={() => handleAddKeyword('blue')}
                   className="p-2 hover:bg-slate-800 rounded-lg text-blue-400 transition-colors"
-                  title="Highlight Blue"
+                  title="Highlight only"
                 >
                   <Edit3 size={18} />
                 </button>
                 <div className="w-px h-6 bg-slate-800 mx-1"></div>
                 <button 
-                  onClick={() => { appendSummaryText(selection.text); clearSelection(); }}
+                  onClick={() => { copySelectionToCurrentStep(selection.text); clearSelection(); }}
                   className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-500"
-                  title="Copy to Editor"
+                  title="Copy to Current Step"
                 >
                   <Copy size={18} />
                 </button>

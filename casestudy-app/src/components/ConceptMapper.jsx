@@ -146,7 +146,7 @@ const ProblemNode = ({ id, data }) => (
   <div className="relative w-56 bg-slate-900 border-l-4 border-rose-500 rounded-xl shadow-2xl p-4 border-slate-800 border group">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent id={id} data={data} typeColor="text-rose-500" typeLabel="Problem" />
+      <NodeContent id={id} data={data} typeColor="text-rose-500" typeLabel="Main Problem" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-rose-500 z-20" />
   </div>
@@ -156,7 +156,7 @@ const CauseNode = ({ id, data }) => (
   <div className="relative w-56 bg-slate-900 border-l-4 border-amber-500 rounded-xl shadow-2xl p-4 border-slate-800 border group">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent id={id} data={data} typeColor="text-amber-500" typeLabel="Cause" />
+      <NodeContent id={id} data={data} typeColor="text-amber-500" typeLabel="Root Cause" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-amber-500 z-20" />
   </div>
@@ -166,7 +166,7 @@ const AnalysisNode = ({ id, data }) => (
   <div className="relative w-64 bg-slate-900 border-l-4 border-primary rounded-xl shadow-2xl p-4 border-2 border-primary/20 group">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent id={id} data={data} typeColor="text-primary" typeLabel="Analysis" />
+      <NodeContent id={id} data={data} typeColor="text-primary" typeLabel="Justification" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-primary z-20" />
   </div>
@@ -176,7 +176,7 @@ const SolutionNode = ({ id, data }) => (
   <div className="relative w-56 bg-slate-900 border-l-4 border-emerald-500 rounded-xl shadow-2xl p-4 border-slate-800 border group">
     <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0" />
     <div className="relative z-10 w-full h-full">
-      <NodeContent id={id} data={data} typeColor="text-emerald-500" typeLabel="Solution" />
+      <NodeContent id={id} data={data} typeColor="text-emerald-500" typeLabel="Possible Solution" />
     </div>
     <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-emerald-500 z-20" />
   </div>
@@ -226,7 +226,7 @@ const ConclusionNode = ({ id, data }) => {
       <Handle type="target" position={Position.Top} className="!w-full !h-full !top-0 !left-0 !transform-none !border-none !bg-transparent !rounded-none z-0" />
       <div className="relative z-10 w-full h-full">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Conclusion</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recommendation</span>
           <div className="flex items-center gap-2">
               <button onClick={() => deleteNode(id)} className="text-slate-400 hover:text-rose-500 transition-colors" title="Delete Node">
                   <Trash2 size={14}/>
@@ -447,42 +447,42 @@ const ConceptMapper = () => {
           
           <div 
             className="flex h-12 shrink-0 items-center justify-center gap-x-3 rounded-xl bg-slate-800 px-6 cursor-grab active:cursor-grabbing hover:bg-rose-950/30 transition-colors border border-transparent hover:border-rose-900"
-            onDragStart={(event) => onDragStart(event, 'problemNode', 'Double click to edit problem...')} draggable
+            onDragStart={(event) => onDragStart(event, 'problemNode', 'Double click to edit main problem...')} draggable
           >
             <div className="size-2 rounded-full bg-rose-500"></div>
-            <p className="text-slate-200 text-sm font-semibold">Problem</p>
+            <p className="text-slate-200 text-sm font-semibold">Main Problem</p>
           </div>
           
           <div 
             className="flex h-12 shrink-0 items-center justify-center gap-x-3 rounded-xl bg-slate-800 px-6 cursor-grab active:cursor-grabbing hover:bg-amber-950/30 transition-colors border border-transparent hover:border-amber-900"
-            onDragStart={(event) => onDragStart(event, 'causeNode', 'Double click to edit cause...')} draggable
+            onDragStart={(event) => onDragStart(event, 'causeNode', 'Double click to edit root cause...')} draggable
           >
             <div className="size-2 rounded-full bg-amber-500"></div>
-            <p className="text-slate-200 text-sm font-semibold">Cause</p>
+            <p className="text-slate-200 text-sm font-semibold">Root Cause</p>
           </div>
           
           <div 
             className="flex h-12 shrink-0 items-center justify-center gap-x-3 rounded-xl bg-slate-800 px-6 cursor-grab active:cursor-grabbing hover:bg-primary/20 transition-colors border border-transparent hover:border-primary/30"
-            onDragStart={(event) => onDragStart(event, 'analysisNode', 'Double click to edit analysis...')} draggable
+            onDragStart={(event) => onDragStart(event, 'analysisNode', 'Double click to edit justification...')} draggable
           >
             <div className="size-2 rounded-full bg-primary"></div>
-            <p className="text-slate-200 text-sm font-semibold">Analysis</p>
+            <p className="text-slate-200 text-sm font-semibold">Justification</p>
           </div>
           
           <div 
             className="flex h-12 shrink-0 items-center justify-center gap-x-3 rounded-xl bg-slate-800 px-6 cursor-grab active:cursor-grabbing hover:bg-emerald-950/30 transition-colors border border-transparent hover:border-emerald-900"
-            onDragStart={(event) => onDragStart(event, 'solutionNode', 'Double click to edit solution...')} draggable
+            onDragStart={(event) => onDragStart(event, 'solutionNode', 'Double click to edit possible solution...')} draggable
           >
             <div className="size-2 rounded-full bg-emerald-500"></div>
-            <p className="text-slate-200 text-sm font-semibold">Solution</p>
+            <p className="text-slate-200 text-sm font-semibold">Possible Solution</p>
           </div>
           
           <div 
             className="flex h-12 shrink-0 items-center justify-center gap-x-3 rounded-xl bg-slate-800 px-6 cursor-grab active:cursor-grabbing hover:bg-slate-700 transition-colors border border-transparent"
-            onDragStart={(event) => onDragStart(event, 'conclusionNode', 'Final proposed layout or finding...')} draggable
+            onDragStart={(event) => onDragStart(event, 'conclusionNode', 'Final recommendation...')} draggable
           >
             <div className="size-2 rounded-full bg-slate-100"></div>
-            <p className="text-slate-200 text-sm font-semibold">Conclusion</p>
+            <p className="text-slate-200 text-sm font-semibold">Recommendation</p>
           </div>
           
           <div className="w-px h-8 bg-slate-700 mx-2"></div>

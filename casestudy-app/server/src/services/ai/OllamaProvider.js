@@ -148,6 +148,79 @@ class OllamaProvider extends AiProvider {
 
         return this._generateResponse(systemPrompt, userPrompt);
     }
+
+    async generateStepHelp({ caseContent, stepKey, stepType, stepTitle, stepHelper, currentDraft }) {
+        let isList = stepType === 'list';
+        
+        let systemPrompt = `You are an expert case-solving assistant helping a student with the "${stepTitle}" step.`;
+        if (isList) {
+            systemPrompt += `\nReturn STRICTLY a JSON array of 1 to 3 short strings. Do not include introductory text.`;
+        } else {
+            systemPrompt += `\nReturn a plain text paragraph providing a suggestion or insight. Do not include markdown fences.`;
+        }
+        
+        let userPrompt = `--- CASE STUDY CONTEXT ---\n${caseContent}\n\n`;
+        userPrompt += `--- CURRENT STEP: ${stepTitle} ---\n`;
+        userPrompt += `Goal: ${stepHelper}\n\n`;
+        
+        if (currentDraft && ((Array.isArray(currentDraft) && currentDraft.length > 0) || (!Array.isArray(currentDraft) && currentDraft.trim().length > 0))) {
+            userPrompt += `Student's current progress for this step:\n${JSON.stringify(currentDraft)}\n\n`;
+            userPrompt += `Provide *additional* helpful insights, evidence, or suggestions without simply repeating what the student has already written.`;
+        } else {
+            userPrompt += `The student hasn't started this step yet. Provide a helpful suggestion or key points to consider based on the case study context.`;
+        }
+
+        const responseText = await this._generateResponse(systemPrompt, userPrompt, isList);
+
+        if (isList) {
+            try {
+                let cleanText = responseText.replace(/```json|```/gi, '').trim();
+                const firstBracket = cleanText.indexOf('[');
+                const lastBracket = cleanText.lastIndexOf(']');
+                if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+                    cleanText = cleanText.substring(firstBracket, lastBracket + 1);
+                }
+
+                let extracted = JSON.parse(cleanText);
+                
+                // If it's an object wrapping an array, try to find the array
+                if (extracted && typeof extracted === 'object' && !Array.isArray(extracted)) {
+                    const possibleArrays = Object.values(extracted).filter(val => Array.isArray(val));
+                    if (possibleArrays.length > 0) {
+                        extracted = possibleArrays[0];
+                    }
+                }
+
+                if (Array.isArray(extracted)) {
+                    return extracted.map(item => {
+                        if (typeof item === 'string') return item;
+                        if (typeof item === 'object' && item !== null) {
+                            // Extract just the values if it's an object
+                            const values = Object.values(item).filter(v => typeof v === 'string');
+                            return values.length > 0 ? values[0] : JSON.stringify(item);
+                        }
+                        return String(item);
+                    }).filter(Boolean);
+                }
+                
+                // If we got here and couldn't resolve an array, force fallback
+                throw new Error("No array found in JSON");
+            } catch {
+                console.error('Failed to parse Ollama step help JSON response:', responseText);
+                // Try to loosely extract lines that look like a list if JSON fails
+                const lines = responseText.split('\n')
+                    // remove brackets, braces, bullet points, leading numbers, and quotes:
+                    .map(line => line.replace(/^[\*\-\d\.\s"\[\{\(]+|[\]\}\)",]+$/g, '').trim())
+                    .filter(line => line.length > 5);
+                
+                if (lines.length > 0) return lines;
+                
+                return [responseText.replace(/```json|```/gi, '').trim()];
+            }
+        } else {
+            return responseText.replace(/```html|```/g, '').trim();
+        }
+    }
 }
 
 module.exports = OllamaProvider;

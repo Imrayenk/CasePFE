@@ -41,6 +41,20 @@ class AiProvider {
     async draftFinalSubmission() {
         throw new Error('Method "draftFinalSubmission" must be implemented.');
     }
+    /**
+     * Provides dynamic assistance for a specific case solving step.
+     * @param {Object} params
+     * @param {string} params.caseContent
+     * @param {string} params.stepKey
+     * @param {string} params.stepType
+     * @param {string} params.stepTitle
+     * @param {string} params.stepHelper
+     * @param {string|Array<string>} params.currentDraft
+     * @returns {Promise<string|Array<string>>} Generated text or list of suggestions
+     */
+    async generateStepHelp() {
+        throw new Error('Method "generateStepHelp" must be implemented.');
+    }
 }
 
 module.exports = AiProvider;

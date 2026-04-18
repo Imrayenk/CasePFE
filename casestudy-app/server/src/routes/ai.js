@@ -86,4 +86,30 @@ router.post('/final-submission', async (req, res) => {
     }
 });
 
+// POST /api/ai/step-help
+router.post('/step-help', async (req, res) => {
+    try {
+        const { caseContent, stepKey, stepType, stepTitle, stepHelper, currentDraft } = req.body;
+
+        if (!caseContent || !stepKey || !stepType) {
+            return res.status(400).json({ error: 'caseContent, stepKey, and stepType are required.' });
+        }
+
+        const provider = getAiProvider();
+        const helpResult = await provider.generateStepHelp({
+            caseContent,
+            stepKey,
+            stepType,
+            stepTitle: stepTitle || stepKey,
+            stepHelper: stepHelper || '',
+            currentDraft
+        });
+
+        res.json({ result: helpResult });
+    } catch (error) {
+        console.error('Error in /api/ai/step-help:', error);
+        res.status(500).json({ error: 'Failed to generate step help: ' + error.message });
+    }
+});
+
 module.exports = router;

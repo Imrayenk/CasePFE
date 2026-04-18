@@ -182,6 +182,72 @@ export const createWorkspaceSlice = (set, get) => ({
         set({ isExtractingConcepts: false });
     }
   },
+
+  isGeneratingStepHelp: false,
+  generateStepHelpAI: async (stepKey) => {
+    const state = get();
+    const config = getActiveStepConfig(state.currentCase?.requiredSteps, state.currentCase?.customSteps);
+    const stepDef = config.find(s => s.key === stepKey);
+    const caseContent = state.currentCase?.content || state.currentCase?.description || '';
+    
+    if (!stepDef || !caseContent) return;
+
+    set({ isGeneratingStepHelp: true });
+
+    try {
+        const payload = {
+            caseContent,
+            stepKey: stepDef.key,
+            stepType: stepDef.type,
+            stepTitle: stepDef.title,
+            stepHelper: stepDef.helper,
+            currentDraft: state.guidedDraft[stepDef.key]
+        };
+
+        const result = await apiPost('/ai/step-help', payload);
+        const helpResult = result.result;
+
+        if (stepDef.type === 'list') {
+            const listResult = Array.isArray(helpResult) ? helpResult : [];
+            if (listResult.length > 0) {
+                set((current) => {
+                    const draft = normalizeGuidedDraft(current.guidedDraft, current.currentCase?.customSteps);
+                    const currentList = Array.isArray(draft[stepKey]) ? draft[stepKey] : [];
+                    return {
+                        guidedDraft: normalizeGuidedDraft({
+                            ...draft,
+                            [stepKey]: [...currentList, ...listResult]
+                        }, current.currentCase?.customSteps),
+                        isGeneratingStepHelp: false,
+                    };
+                });
+            } else {
+                set({ isGeneratingStepHelp: false });
+            }
+        } else {
+            const textResult = typeof helpResult === 'string' ? helpResult : '';
+            if (textResult) {
+                set((current) => {
+                    const draft = normalizeGuidedDraft(current.guidedDraft, current.currentCase?.customSteps);
+                    const currentText = draft[stepKey] ? draft[stepKey] + '\n\n' : '';
+                    return {
+                        guidedDraft: normalizeGuidedDraft({
+                            ...draft,
+                            [stepKey]: currentText + textResult
+                        }, current.currentCase?.customSteps),
+                        isGeneratingStepHelp: false,
+                    };
+                });
+            } else {
+                set({ isGeneratingStepHelp: false });
+            }
+        }
+    } catch (error) {
+        console.error("AI Step Help Error:", error);
+        get().addNotification?.('AI Assistance Unavailable', 'Try again later or continue manually.');
+        set({ isGeneratingStepHelp: false });
+    }
+  },
   
   addKeyword: (text, category) => set((state) => ({ 
     keywords: [...state.keywords, { id: 'k' + Date.now(), text, category }]

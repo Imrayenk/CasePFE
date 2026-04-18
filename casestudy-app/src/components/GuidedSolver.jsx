@@ -33,8 +33,8 @@ const GuidedSolver = () => {
     submitAssignment,
     generateFinalSubmission,
     isGeneratingDraft,
-    extractEvidenceAI,
-    isExtractingConcepts,
+    generateStepHelpAI,
+    isGeneratingStepHelp,
     getStepCompletion,
     getGuidedMissingItems,
     currentCase,
@@ -222,23 +222,26 @@ const GuidedSolver = () => {
             />
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <button
-              onClick={extractEvidenceAI}
-              disabled={isExtractingConcepts}
-              className="flex items-center justify-center gap-2 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-indigo-300 hover:bg-indigo-500/20 disabled:opacity-50"
-            >
-              <Bot size={16} />
-              {isExtractingConcepts ? 'Extracting evidence...' : 'AI Extract Evidence'}
-            </button>
-            <button
-              onClick={generateFinalSubmission}
-              disabled={isGeneratingDraft}
-              className="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-bold text-primary hover:bg-primary/20 disabled:opacity-50"
-            >
-              <Sparkles size={16} />
-              {isGeneratingDraft ? 'Drafting final submission...' : 'AI Draft Final Submission'}
-            </button>
+          <div className="grid grid-cols-1 gap-4">
+            {activeStep.key === 'final_submission' ? (
+                <button
+                  onClick={generateFinalSubmission}
+                  disabled={isGeneratingDraft}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-bold text-primary hover:bg-primary/20 disabled:opacity-50"
+                >
+                  <Sparkles size={16} />
+                  {isGeneratingDraft ? 'Drafting final submission...' : 'AI Draft Final Submission'}
+                </button>
+            ) : (
+                <button
+                  onClick={() => generateStepHelpAI(activeStep.key)}
+                  disabled={isGeneratingStepHelp}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-indigo-300 hover:bg-indigo-500/20 disabled:opacity-50"
+                >
+                  <Bot size={16} />
+                  {isGeneratingStepHelp ? `Assisting with ${activeStep.shortTitle || activeStep.title}...` : `AI Assist with ${activeStep.title}`}
+                </button>
+            )}
           </div>
         </div>
 

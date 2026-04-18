@@ -1,21 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Save, FileText, Paperclip, X } from 'lucide-react';
+import { ArrowLeft, Save, FileText, Paperclip, X, Library, CheckSquare, PlusSquare, Trash2 } from 'lucide-react';
+import { guidedStepConfig } from '../lib/guidedCase';
 
 const CaseCreate = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { addCase, updateCase, cases, fetchCases } = useStore();
+  const { addCase, updateCase, cases, fetchCases, subjects, fetchSubjects } = useStore();
   
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState('Active');
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState([]);
+  const [subjectId, setSubjectId] = useState('');
+  const [requiredSteps, setRequiredSteps] = useState(guidedStepConfig.map(s => s.key));
+  const [customSteps, setCustomSteps] = useState([]);
+
+  // States for the new custom step form
+  const [newStepTitle, setNewStepTitle] = useState('');
+  const [newStepShortTitle, setNewStepShortTitle] = useState('');
+  const [newStepHelper, setNewStepHelper] = useState('');
+  const [newStepType, setNewStepType] = useState('textarea');
 
   useEffect(() => {
     fetchCases();
-  }, [fetchCases]);
+    fetchSubjects();
+  }, [fetchCases, fetchSubjects]);
 
   useEffect(() => {
     if (id && cases) {
@@ -25,6 +36,9 @@ const CaseCreate = () => {
         setContent(existingCase.content || existingCase.description);
         setStatus(existingCase.status || 'Active');
         setAttachments(existingCase.attachments || []);
+        setSubjectId(existingCase.subjectId || '');
+        setRequiredSteps(existingCase.requiredSteps || guidedStepConfig.map(s => s.key));
+        setCustomSteps(existingCase.customSteps || []);
       }
     }
   }, [id, cases]);
@@ -51,6 +65,9 @@ const CaseCreate = () => {
            description: content.length > 250 ? content.substring(0, 250) + '...' : content,
            content,
            attachments,
+           subjectId,
+           requiredSteps,
+           customSteps,
            updateHistory: [...(existingCase.updateHistory || []), new Date().toISOString()]
          });
          if (!success) {
@@ -65,7 +82,10 @@ const CaseCreate = () => {
            date: new Date().toISOString().split('T')[0],
            status,
            submissions: 0,
-           attachments
+           attachments,
+           subjectId,
+           requiredSteps,
+           customSteps
          };
          const response = await addCase(newCase);
          if (response && response.error) {
@@ -81,6 +101,30 @@ const CaseCreate = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAddCustomStep = () => {
+     if (!newStepTitle.trim() || !newStepShortTitle.trim()) {
+        alert("Please provide both a Title and a Short Title.");
+        return;
+     }
+
+     const newStep = {
+        key: `custom_${Date.now()}`,
+        title: newStepTitle,
+        shortTitle: newStepShortTitle,
+        helper: newStepHelper,
+        type: newStepType,
+        placeholder: newStepType === 'list' ? 'Add an item...' : 'Write your response here...',
+     };
+
+     setCustomSteps(prev => [...prev, newStep]);
+     
+     // Reset form
+     setNewStepTitle('');
+     setNewStepShortTitle('');
+     setNewStepHelper('');
+     setNewStepType('textarea');
   };
 
   return (
@@ -99,7 +143,7 @@ const CaseCreate = () => {
           </div>
           <button 
             onClick={handleSave}
-            disabled={!title || !content || isSaving}
+            disabled={!title || !content || !subjectId || isSaving}
             className="px-6 py-2 bg-primary rounded-lg text-white font-bold shadow-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
           >
             <Save size={18}/> {isSaving ? 'Saving...' : (id ? 'Update Case' : 'Publish Case')}
@@ -117,6 +161,19 @@ const CaseCreate = () => {
                  placeholder="e.g. Ethical Dilemma in Logistics"
                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors font-medium text-lg placeholder-slate-500"
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1"><Library size={14}/> Subject</label>
+              <select 
+                 value={subjectId}
+                 onChange={e => setSubjectId(e.target.value)}
+                 className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-primary transition-colors font-medium text-lg cursor-pointer"
+              >
+                 <option value="" disabled>Select a Subject</option>
+                 {subjects?.map(sub => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                 ))}
+              </select>
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-slate-300 uppercase tracking-wider">Status</label>
@@ -153,11 +210,28 @@ const CaseCreate = () => {
                    type="file" 
                    multiple 
                    className="hidden" 
-                   onChange={(e) => {
-                     const newFiles = Array.from(e.target.files).map(f => ({
-                        name: f.name,
-                        size: (f.size / 1024 / 1024).toFixed(2) + ' MB',
-                        type: f.type || 'Unknown'
+                   onChange={async (e) => {
+                     const files = Array.from(e.target.files);
+                     const newFiles = await Promise.all(files.map(f => {
+                         return new Promise((resolve) => {
+                             const reader = new FileReader();
+                             reader.onload = (event) => {
+                                 resolve({
+                                    name: f.name,
+                                    size: (f.size / 1024 / 1024).toFixed(2) + ' MB',
+                                    type: f.type || 'Unknown',
+                                    url: event.target.result
+                                 });
+                             };
+                             reader.onerror = () => {
+                                 resolve({
+                                    name: f.name,
+                                    size: (f.size / 1024 / 1024).toFixed(2) + ' MB',
+                                    type: f.type || 'Unknown'
+                                 });
+                             };
+                             reader.readAsDataURL(f);
+                         });
                      }));
                      setAttachments(prev => [...prev, ...newFiles]);
                    }} 
@@ -192,10 +266,124 @@ const CaseCreate = () => {
               )}
             </div>
           </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <CheckSquare size={16}/> Required Solver Steps
+            </label>
+            <p className="text-sm text-slate-400 mb-2">Select which guided steps the learner must complete. Final Submission is always required.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {guidedStepConfig.filter(s => s.key !== 'final_submission').map(step => (
+                 <label key={step.key} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${requiredSteps.includes(step.key) ? 'bg-primary/10 border-primary/50 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}>
+                    <input 
+                      type="checkbox" 
+                      className="hidden"
+                      checked={requiredSteps.includes(step.key)}
+                      onChange={(e) => {
+                         if (e.target.checked) {
+                            setRequiredSteps(prev => [...prev, step.key]);
+                         } else {
+                            setRequiredSteps(prev => prev.filter(k => k !== step.key));
+                         }
+                      }}
+                    />
+                    <div className={`size-5 rounded shrink-0 flex items-center justify-center border ${requiredSteps.includes(step.key) ? 'bg-primary border-transparent' : 'border-slate-500 bg-slate-900'}`}>
+                       {requiredSteps.includes(step.key) && <CheckSquare size={14} className="text-white" />}
+                    </div>
+                    <span className="font-bold text-sm tracking-wide">{step.title}</span>
+                 </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 p-5 rounded-xl border border-slate-700 bg-slate-800/30">
+             <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <PlusSquare size={16}/> Custom Steps
+                </label>
+             </div>
+             <p className="text-sm text-slate-400">Create custom evaluation steps that appear right before Final Submission.</p>
+             
+             {customSteps.length > 0 && (
+                <div className="flex flex-col gap-2 mb-2">
+                   {customSteps.map((step, idx) => (
+                      <div key={step.key} className="flex items-center justify-between p-3 rounded-lg border border-primary/30 bg-primary/10">
+                         <div>
+                            <span className="font-bold text-slate-200 block">{step.shortTitle}: {step.title}</span>
+                            <span className="text-xs text-slate-400 block mt-0.5">Type: {step.type === 'list' ? 'Checklist items' : 'Text response'}</span>
+                         </div>
+                         <button 
+                             onClick={(e) => {
+                                e.preventDefault();
+                                setCustomSteps(prev => prev.filter((_, i) => i !== idx));
+                             }}
+                             className="p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded transition-colors"
+                         >
+                            <Trash2 size={16}/>
+                         </button>
+                      </div>
+                   ))}
+                </div>
+             )}
+
+             <div className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="flex flex-col gap-2">
+                       <label className="text-xs font-bold text-slate-400">Step Title</label>
+                       <input 
+                         type="text"
+                         value={newStepTitle}
+                         onChange={e => setNewStepTitle(e.target.value)}
+                         placeholder="e.g. Alternative Perspectives"
+                         className="bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+                       />
+                   </div>
+                   <div className="flex flex-col gap-2">
+                       <label className="text-xs font-bold text-slate-400">Short Title (Tab Name)</label>
+                       <input 
+                         type="text"
+                         value={newStepShortTitle}
+                         onChange={e => setNewStepShortTitle(e.target.value)}
+                         placeholder="e.g. Perspectives"
+                         className="bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+                       />
+                   </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-400">Helper Text / Guidance</label>
+                    <textarea 
+                      value={newStepHelper}
+                      onChange={e => setNewStepHelper(e.target.value)}
+                      placeholder="e.g. List two alternative explanations for..."
+                      rows={2}
+                      className="bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200 focus:outline-none focus:border-primary resize-none custom-scrollbar"
+                    />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-400">Input Type</label>
+                    <select
+                      value={newStepType}
+                      onChange={e => setNewStepType(e.target.value)}
+                      className="bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+                    >
+                       <option value="textarea">Text Block (Paragraphs)</option>
+                       <option value="list">List Items (Checklist format)</option>
+                    </select>
+                </div>
+                <button
+                   onClick={(e) => {
+                      e.preventDefault();
+                      handleAddCustomStep();
+                   }}
+                   className="mt-2 py-2 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-sm text-white font-bold transition-colors self-start flex items-center gap-2"
+                >
+                   <PlusSquare size={16}/> Add Custom Step
+                </button>
+             </div>
+          </div>
           
           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
              <p className="text-sm text-slate-400">
-                <strong className="text-slate-200">Note:</strong> Learners will solve this case through the guided steps and submit a required concept map for teacher review.
+                <strong className="text-slate-200">Note:</strong> Learners will solve this case through the checked steps and submit a required concept map. (The Final Submission task is always enabled).
              </p>
           </div>
         </section>

@@ -77,21 +77,31 @@ export const requiredMapNodeTypes = [
   'conclusionNode',
 ];
 
-export function normalizeGuidedDraft(value = {}) {
-  return {
+export function normalizeGuidedDraft(value = {}, customSteps = []) {
+  const result = {
     ...emptyGuidedDraft,
     ...value,
     evidence: Array.isArray(value.evidence) ? value.evidence : [],
     root_causes: Array.isArray(value.root_causes) ? value.root_causes : [],
     possible_solutions: Array.isArray(value.possible_solutions) ? value.possible_solutions : [],
   };
+
+  customSteps.forEach(step => {
+     if (step.type === 'list') {
+        result[step.key] = Array.isArray(value[step.key]) ? value[step.key] : [];
+     } else {
+        result[step.key] = value[step.key] || '';
+     }
+  });
+
+  return result;
 }
 
-export function getGuidedStepCompletion(guidedDraft, nodes = []) {
-  const draft = normalizeGuidedDraft(guidedDraft);
+export function getGuidedStepCompletion(guidedDraft, nodes = [], customSteps = []) {
+  const draft = normalizeGuidedDraft(guidedDraft, customSteps);
   const nodeTypes = new Set(nodes.map(node => node.type));
 
-  return {
+  const completion = {
     main_problem: draft.main_problem.trim().length > 0,
     evidence: draft.evidence.length > 0,
     root_causes: draft.root_causes.length > 0,
@@ -101,13 +111,37 @@ export function getGuidedStepCompletion(guidedDraft, nodes = []) {
     final_submission: draft.final_submission.trim().length > 0,
     map: requiredMapNodeTypes.every(type => nodeTypes.has(type)),
   };
+
+  customSteps.forEach(step => {
+      if (step.type === 'list') {
+          completion[step.key] = draft[step.key].length > 0;
+      } else {
+          completion[step.key] = draft[step.key].trim().length > 0;
+      }
+  });
+
+  return completion;
 }
 
-export function getGuidedMissingItems(guidedDraft, nodes = []) {
-  const completion = getGuidedStepCompletion(guidedDraft, nodes);
+export function getActiveStepConfig(requiredSteps = null, customSteps = []) {
+  const baseConfig = requiredSteps 
+      ? guidedStepConfig.filter(s => requiredSteps.includes(s.key)) 
+      : guidedStepConfig.filter(s => s.key !== 'final_submission');
+
+  return [
+      ...baseConfig.filter(s => s.key !== 'final_submission'),
+      ...customSteps,
+      guidedStepConfig.find(s => s.key === 'final_submission')
+  ];
+}
+
+export function getGuidedMissingItems(guidedDraft, nodes = [], requiredSteps = null, customSteps = []) {
+  const completion = getGuidedStepCompletion(guidedDraft, nodes, customSteps);
   const missing = [];
 
-  guidedStepConfig.forEach(step => {
+  const activeConfig = getActiveStepConfig(requiredSteps, customSteps);
+
+  activeConfig.forEach(step => {
     if (!completion[step.key]) missing.push(step.title);
   });
   if (!completion.map) missing.push('Required concept map nodes');

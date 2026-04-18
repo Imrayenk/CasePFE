@@ -3,13 +3,40 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/authMiddleware');
 const { requireRole } = authMiddleware;
+const jwt = require('jsonwebtoken');
 
-// GET /api/cases
 router.get('/', async (req, res) => {
     try {
-        const cases = await prisma.case.findMany({
-            orderBy: { createdAt: 'desc' }
-        });
+        let userId = null;
+        let role = null;
+        
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_dev_secret');
+                userId = decoded.id;
+                role = decoded.role;
+            } catch (e) {}
+        }
+
+        let cases;
+
+        if (role === 'teacher') {
+            cases = await prisma.case.findMany({
+                where: { teacherId: userId },
+                orderBy: { createdAt: 'desc' }
+            });
+        } else {
+            // For learners or public homepage (PopularCases), return only active cases
+            cases = await prisma.case.findMany({
+                where: { 
+                    status: { in: ['Active', 'active'] }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+        }
+        
         res.json(cases);
     } catch (error) {
         console.error("GET / cases error:", error);
@@ -34,7 +61,10 @@ router.get('/:id', async (req, res) => {
 // POST /api/cases
 router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
     try {
-        const { title, content, description, status, attachments, update_history } = req.body;
+        const { title, content, description, status, attachments, update_history, subjectId, required_steps, custom_steps } = req.body;
+        if (!subjectId) {
+            return res.status(400).json({ error: 'subjectId is required to create a case' });
+        }
         const newCase = await prisma.case.create({
             data: {
                 title,
@@ -43,7 +73,10 @@ router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, 
                 status: status || 'draft',
                 attachments: attachments ? JSON.stringify(attachments) : null,
                 update_history: update_history ? JSON.stringify(update_history) : null,
-                teacherId: req.user.id
+                required_steps: required_steps ? JSON.stringify(required_steps) : null,
+                custom_steps: custom_steps ? JSON.stringify(custom_steps) : null,
+                teacherId: req.user.id,
+                subjectId
             }
         });
         res.json(newCase);
@@ -56,17 +89,22 @@ router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, 
 // PUT /api/cases/:id
 router.put('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
     try {
-        const { title, content, description, status, attachments, update_history } = req.body;
+        const { title, content, description, status, attachments, update_history, subjectId, required_steps, custom_steps } = req.body;
+        const dataToUpdate = {
+            title,
+            content,
+            description,
+            status,
+            attachments: attachments ? JSON.stringify(attachments) : null,
+            update_history: update_history ? JSON.stringify(update_history) : null,
+            required_steps: required_steps ? JSON.stringify(required_steps) : null,
+            custom_steps: custom_steps ? JSON.stringify(custom_steps) : null,
+        };
+        if (subjectId) dataToUpdate.subjectId = subjectId;
+
         const updated = await prisma.case.update({
             where: { id: req.params.id },
-            data: {
-                title,
-                content,
-                description,
-                status,
-                attachments: attachments ? JSON.stringify(attachments) : null,
-                update_history: update_history ? JSON.stringify(update_history) : null,
-            }
+            data: dataToUpdate
         });
         res.json(updated);
     } catch (error) {

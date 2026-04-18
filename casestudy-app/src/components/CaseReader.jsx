@@ -176,6 +176,52 @@ const CaseReader = () => {
      URL.revokeObjectURL(url);
   };
 
+  const handleAttachmentClick = (e, file, action) => {
+      e.stopPropagation();
+      let targetUrl = file.url && file.url !== '#' ? file.url : null;
+      let isTemp = false;
+
+      if (!targetUrl || targetUrl.startsWith('data:')) {
+          try {
+              let blob;
+              if (targetUrl && targetUrl.startsWith('data:')) {
+                  const parts = targetUrl.split(',');
+                  const mime = parts[0].match(/:(.*?);/)[1];
+                  const bstr = atob(parts[1]);
+                  let n = bstr.length;
+                  const u8arr = new Uint8Array(n);
+                  while (n--) {
+                     u8arr[n] = bstr.charCodeAt(n);
+                  }
+                  blob = new Blob([u8arr], { type: mime });
+              } else {
+                  blob = new Blob([`Mock content for ${file.name}\n\nSize: ${file.size}\nType: ${file.type}`], { type: file.type || 'text/plain' });
+              }
+              targetUrl = URL.createObjectURL(blob);
+              isTemp = true;
+          } catch (err) {
+              console.error('Error parsing file data', err);
+              if (!targetUrl) targetUrl = '#'; // Fallback
+          }
+      }
+
+      if (action === 'download') {
+          const a = document.createElement('a');
+          a.href = targetUrl;
+          a.download = file.name || 'download';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+      } else {
+          window.open(targetUrl, '_blank');
+      }
+
+      if (isTemp) {
+          // Clean up blob url after a short delay so the browser has time to start downloading/opening
+          setTimeout(() => URL.revokeObjectURL(targetUrl), 1000);
+      }
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-900">
       <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0 z-20 bg-slate-900 shadow-sm">
@@ -334,7 +380,11 @@ const CaseReader = () => {
                      </h3>
                      <div className="grid sm:grid-cols-2 gap-4">
                          {currentCase.attachments.map((file, i) => (
-                             <div key={i} className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer">
+                             <div 
+                                key={i} 
+                                onClick={(e) => handleAttachmentClick(e, file, 'open')}
+                                className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer"
+                             >
                                  <div className="flex items-center gap-3 overflow-hidden">
                                      <div className="size-10 rounded bg-primary/20 text-primary flex items-center justify-center shrink-0">
                                          <FileText size={20}/>
@@ -344,7 +394,11 @@ const CaseReader = () => {
                                          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{file.size} • {file.type}</p>
                                      </div>
                                  </div>
-                                 <button className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors opacity-0 group-hover:opacity-100 shrink-0">
+                                 <button 
+                                     onClick={(e) => handleAttachmentClick(e, file, 'download')}
+                                     className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                                     title="Download File"
+                                 >
                                      <Download size={16}/>
                                  </button>
                              </div>

@@ -19,6 +19,8 @@ export const createCaseSlice = (set, get) => ({
          const mappedCases = data.map(c => {
              const parsedAttachments = parseJsonValue(c.attachments, []);
              const parsedHistory = parseJsonValue(c.update_history, []);
+             const parsedRequiredSteps = parseJsonValue(c.required_steps, null);
+             const parsedCustomSteps = parseJsonValue(c.custom_steps, []);
 
              return {
                  id: c.id,
@@ -28,7 +30,10 @@ export const createCaseSlice = (set, get) => ({
                  date: new Date(c.createdAt).toISOString().split('T')[0],
                  status: c.status === 'draft' ? 'Draft' : (c.status === 'active' ? 'Active' : 'Closed'),
                  attachments: parsedAttachments,
-                 updateHistory: parsedHistory
+                 updateHistory: parsedHistory,
+                 requiredSteps: parsedRequiredSteps,
+                 customSteps: parsedCustomSteps,
+                 subjectId: c.subjectId
              };
          });
          set({ cases: mappedCases });
@@ -47,7 +52,10 @@ export const createCaseSlice = (set, get) => ({
               status: statusMap[newCase.status] || 'draft',
               attachments: newCase.attachments || [],
               update_history: newCase.updateHistory || [],
-              teacherId: get().user?.id
+              required_steps: newCase.requiredSteps || null,
+              custom_steps: newCase.customSteps || [],
+              teacherId: get().user?.id,
+              subjectId: newCase.subjectId
           });
           await get().fetchCases();
           return true;
@@ -66,7 +74,10 @@ export const createCaseSlice = (set, get) => ({
               description: updatedCase.description,
               status: statusMap[updatedCase.status] || 'draft',
               attachments: updatedCase.attachments || [],
-              update_history: updatedCase.updateHistory || []
+              update_history: updatedCase.updateHistory || [],
+              required_steps: updatedCase.requiredSteps || null,
+              custom_steps: updatedCase.customSteps || [],
+              subjectId: updatedCase.subjectId
           });
           await get().fetchCases();
           return true;
@@ -145,6 +156,7 @@ export const createCaseSlice = (set, get) => ({
                  const parsedHistory = parseJsonValue(s.override_history, []);
                  return {
                      id: s.id,
+                     learnerId: s.learnerId,
                      learnerName: s.learner?.name || 'Unknown Learner',
                      caseId: s.caseId,
                      status: s.status === 'in_progress' ? 'In Progress' : (s.status === 'submitted' ? 'Submitted for Review' : (s.status === 'graded' ? 'Graded' : 'Graded (Override)')),
@@ -235,7 +247,12 @@ export const createCaseSlice = (set, get) => ({
   submitAssignment: async () => {
     try {
       const state = get();
-      const missingItems = getGuidedMissingItems(state.guidedDraft, state.nodes);
+      const missingItems = getGuidedMissingItems(
+        state.guidedDraft, 
+        state.nodes, 
+        state.currentCase?.requiredSteps, 
+        state.currentCase?.customSteps
+      );
       if (missingItems.length > 0) {
         throw new Error(`Complete these items before submitting: ${missingItems.join(', ')}`);
       }

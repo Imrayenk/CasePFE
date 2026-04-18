@@ -13,6 +13,8 @@ import Profile from './pages/Profile';
 import Home from './pages/Home';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import StudentStats from './pages/StudentStats';
+
 function App() {
   useEffect(() => {
     useStore.getState().initializeSession();
@@ -42,6 +44,7 @@ function App() {
             <Route path="grading/:id" element={<GradingView />} />
             <Route path="create-case" element={<CaseCreate />} />
             <Route path="edit-case/:id" element={<CaseCreate />} />
+            <Route path="student-stats/:studentId/:subjectId" element={<StudentStats />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Route>

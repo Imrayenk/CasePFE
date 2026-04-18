@@ -1,10 +1,10 @@
 import { apiPost } from '../../lib/api';
 import {
   emptyGuidedDraft,
-  guidedListKeys,
   getGuidedMissingItems,
   getGuidedStepCompletion,
   normalizeGuidedDraft,
+  getActiveStepConfig,
 } from '../../lib/guidedCase';
 
 const mapNodeTypeLabels = {
@@ -30,15 +30,15 @@ export const createWorkspaceSlice = (set, get) => ({
   summaryText: '',
 
   setActiveStepIndex: (index) => set({ activeStepIndex: index }),
-  setGuidedDraft: (draft) => set({
-    guidedDraft: normalizeGuidedDraft(draft),
-    summaryText: normalizeGuidedDraft(draft).final_submission,
-  }),
+  setGuidedDraft: (draft) => set((state) => ({
+    guidedDraft: normalizeGuidedDraft(draft, state.currentCase?.customSteps),
+    summaryText: normalizeGuidedDraft(draft, state.currentCase?.customSteps).final_submission,
+  })),
   setGuidedField: (key, value) => set((state) => {
     const guidedDraft = normalizeGuidedDraft({
       ...state.guidedDraft,
       [key]: value,
-    });
+    }, state.currentCase?.customSteps);
     return {
       guidedDraft,
       summaryText: guidedDraft.final_submission,
@@ -49,7 +49,7 @@ export const createWorkspaceSlice = (set, get) => ({
     guidedDraft: normalizeGuidedDraft({
       ...state.guidedDraft,
       final_submission: text,
-    }),
+    }, state.currentCase?.customSteps),
   })),
   appendSummaryText: (text) => set((state) => {
     const finalSubmission = `${state.guidedDraft.final_submission || ''}\n\n${text}`.trim();
@@ -58,12 +58,14 @@ export const createWorkspaceSlice = (set, get) => ({
       guidedDraft: normalizeGuidedDraft({
         ...state.guidedDraft,
         final_submission: finalSubmission,
-      }),
+      }, state.currentCase?.customSteps),
     };
   }),
   addGuidedListItem: (key, text) => set((state) => {
-    if (!guidedListKeys.includes(key) || !text.trim()) return {};
-    const guidedDraft = normalizeGuidedDraft(state.guidedDraft);
+    const config = getActiveStepConfig(state.currentCase?.requiredSteps, state.currentCase?.customSteps);
+    const stepDef = config.find(s => s.key === key);
+    if (!stepDef || stepDef.type !== 'list' || !text.trim()) return {};
+    const guidedDraft = normalizeGuidedDraft(state.guidedDraft, state.currentCase?.customSteps);
     return {
       guidedDraft: {
         ...guidedDraft,
@@ -72,8 +74,10 @@ export const createWorkspaceSlice = (set, get) => ({
     };
   }),
   removeGuidedListItem: (key, index) => set((state) => {
-    if (!guidedListKeys.includes(key)) return {};
-    const guidedDraft = normalizeGuidedDraft(state.guidedDraft);
+    const config = getActiveStepConfig(state.currentCase?.requiredSteps, state.currentCase?.customSteps);
+    const stepDef = config.find(s => s.key === key);
+    if (!stepDef || stepDef.type !== 'list') return {};
+    const guidedDraft = normalizeGuidedDraft(state.guidedDraft, state.currentCase?.customSteps);
     return {
       guidedDraft: {
         ...guidedDraft,
@@ -82,8 +86,10 @@ export const createWorkspaceSlice = (set, get) => ({
     };
   }),
   updateGuidedListItem: (key, index, value) => set((state) => {
-    if (!guidedListKeys.includes(key)) return {};
-    const guidedDraft = normalizeGuidedDraft(state.guidedDraft);
+    const config = getActiveStepConfig(state.currentCase?.requiredSteps, state.currentCase?.customSteps);
+    const stepDef = config.find(s => s.key === key);
+    if (!stepDef || stepDef.type !== 'list') return {};
+    const guidedDraft = normalizeGuidedDraft(state.guidedDraft, state.currentCase?.customSteps);
     return {
       guidedDraft: {
         ...guidedDraft,
@@ -97,18 +103,22 @@ export const createWorkspaceSlice = (set, get) => ({
   },
   copySelectionToCurrentStep: (text) => {
     const state = get();
-    const stepKey = ['main_problem', 'evidence', 'root_causes', 'possible_solutions', 'recommendation', 'justification', 'final_submission'][state.activeStepIndex] || 'evidence';
-    if (guidedListKeys.includes(stepKey)) {
-      state.addGuidedListItem(stepKey, text);
+    const config = getActiveStepConfig(state.currentCase?.requiredSteps, state.currentCase?.customSteps);
+    const safeIndex = Math.min(state.activeStepIndex, config.length - 1 >= 0 ? config.length - 1 : 0);
+    const stepDef = config[safeIndex];
+    if (!stepDef) return;
+    
+    if (stepDef.type === 'list') {
+      state.addGuidedListItem(stepDef.key, text);
       return;
     }
-    const current = state.guidedDraft[stepKey] || '';
-    state.setGuidedField(stepKey, `${current}\n${text}`.trim());
+    const current = state.guidedDraft[stepDef.key] || '';
+    state.setGuidedField(stepDef.key, `${current}\n${text}`.trim());
   },
 
-  getStepCompletion: () => getGuidedStepCompletion(get().guidedDraft, get().nodes),
-  canSubmitGuidedCase: () => getGuidedMissingItems(get().guidedDraft, get().nodes).length === 0,
-  getGuidedMissingItems: () => getGuidedMissingItems(get().guidedDraft, get().nodes),
+  getStepCompletion: () => getGuidedStepCompletion(get().guidedDraft, get().nodes, get().currentCase?.customSteps),
+  canSubmitGuidedCase: () => getGuidedMissingItems(get().guidedDraft, get().nodes, get().currentCase?.requiredSteps, get().currentCase?.customSteps).length === 0,
+  getGuidedMissingItems: () => getGuidedMissingItems(get().guidedDraft, get().nodes, get().currentCase?.requiredSteps, get().currentCase?.customSteps),
 
   isGeneratingDraft: false,
   generateDraft: async () => get().generateFinalSubmission(),
@@ -129,7 +139,7 @@ export const createWorkspaceSlice = (set, get) => ({
           guidedDraft: normalizeGuidedDraft({
             ...current.guidedDraft,
             final_submission: finalSubmission,
-          }),
+          }, current.currentCase?.customSteps),
           isGeneratingDraft: false,
         }));
     } catch (error) {
@@ -153,9 +163,9 @@ export const createWorkspaceSlice = (set, get) => ({
         const evidence = Array.isArray(result.evidence) ? result.evidence : [];
         set((current) => ({
           guidedDraft: normalizeGuidedDraft({
-            ...normalizeGuidedDraft(current.guidedDraft),
-            evidence: [...normalizeGuidedDraft(current.guidedDraft).evidence, ...evidence],
-          }),
+            ...normalizeGuidedDraft(current.guidedDraft, current.currentCase?.customSteps),
+            evidence: [...normalizeGuidedDraft(current.guidedDraft, current.currentCase?.customSteps).evidence, ...evidence],
+          }, current.currentCase?.customSteps),
           keywords: [
             ...current.keywords,
             ...evidence.map((text, index) => ({

@@ -8,6 +8,7 @@ import { createCaseSlice } from './slices/createCaseSlice';
 import { createSocialSlice } from './slices/createSocialSlice';
 import { createNotificationSlice } from './slices/createNotificationSlice';
 import { createUISlice } from './slices/createUISlice';
+import { createSubjectSlice } from './slices/createSubjectSlice';
 
 const useStore = create(
   persist(
@@ -19,6 +20,7 @@ const useStore = create(
       ...createSocialSlice(...a),
       ...createNotificationSlice(...a),
       ...createUISlice(...a),
+      ...createSubjectSlice(...a),
     }),
     {
       name: 'casestudy-storage',

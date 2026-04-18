@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { guidedListKeys, guidedStepConfig } from '../lib/guidedCase';
+import { guidedStepConfig, getActiveStepConfig } from '../lib/guidedCase';
 import { Bot, CheckCircle, ChevronLeft, ChevronRight, Cloud, ListPlus, Send, Sparkles, Trash2 } from 'lucide-react';
 
 const getWordCount = (text = '') => {
@@ -47,15 +47,20 @@ const GuidedSolver = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savePulse, setSavePulse] = useState(false);
 
-  const activeStep = guidedStepConfig[activeStepIndex];
+  const activeStepConfig = useMemo(() => {
+    return getActiveStepConfig(currentCase?.requiredSteps, currentCase?.customSteps);
+  }, [currentCase?.requiredSteps, currentCase?.customSteps]);
+
+  const safeActiveIndex = Math.min(activeStepIndex, activeStepConfig.length - 1 >= 0 ? activeStepConfig.length - 1 : 0);
+  const activeStep = activeStepConfig[safeActiveIndex] || guidedStepConfig[0];
   const completion = getStepCompletion();
   const missingItems = getGuidedMissingItems();
-  const isListStep = guidedListKeys.includes(activeStep.key);
+  const isListStep = activeStep.type === 'list';
   const finalWordCount = getWordCount(guidedDraft.final_submission);
 
   const completedCount = useMemo(
-    () => guidedStepConfig.filter(step => completion[step.key]).length,
-    [completion]
+    () => activeStepConfig.filter(step => completion[step.key]).length,
+    [completion, activeStepConfig]
   );
 
   useEffect(() => {
@@ -119,12 +124,12 @@ const GuidedSolver = () => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-              {guidedStepConfig.map((step, index) => (
+              {activeStepConfig.map((step, index) => (
                 <button
                   key={step.key}
                   onClick={() => setActiveStepIndex(index)}
                   className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
-                    activeStepIndex === index
+                    safeActiveIndex === index
                       ? 'bg-primary text-white border-primary'
                       : completion[step.key]
                         ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
@@ -142,13 +147,13 @@ const GuidedSolver = () => {
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold text-primary uppercase tracking-widest">Step {activeStepIndex + 1} of {guidedStepConfig.length}</p>
+              <p className="text-xs font-bold text-primary uppercase tracking-widest">Step {safeActiveIndex + 1} of {activeStepConfig.length}</p>
               <h2 className="text-2xl font-bold text-slate-100 mt-1">{activeStep.title}</h2>
               <p className="text-slate-400 mt-2">{activeStep.helper}</p>
             </div>
             <div className="text-right">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Progress</p>
-              <p className="text-lg font-bold text-slate-200">{completedCount}/{guidedStepConfig.length}</p>
+              <p className="text-lg font-bold text-slate-200">{completedCount}/{activeStepConfig.length}</p>
             </div>
           </div>
 
@@ -172,7 +177,7 @@ const GuidedSolver = () => {
               </form>
 
               <div className="space-y-3">
-                {guidedDraft[activeStep.key].length === 0 ? (
+                {(!guidedDraft[activeStep.key] || guidedDraft[activeStep.key].length === 0) ? (
                   <div className="rounded-xl border border-dashed border-slate-700 bg-slate-800/30 p-8 text-center text-slate-500">
                     No entries yet. Add one manually or select text from the case reader.
                   </div>
@@ -247,16 +252,16 @@ const GuidedSolver = () => {
 
           <div className="flex items-center gap-3 ml-auto">
             <button
-              onClick={() => setActiveStepIndex(Math.max(0, activeStepIndex - 1))}
-              disabled={activeStepIndex === 0}
+              onClick={() => setActiveStepIndex(Math.max(0, safeActiveIndex - 1))}
+              disabled={safeActiveIndex === 0}
               className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm font-bold hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <ChevronLeft size={16} />
               Back
             </button>
             <button
-              onClick={() => setActiveStepIndex(Math.min(guidedStepConfig.length - 1, activeStepIndex + 1))}
-              disabled={activeStepIndex === guidedStepConfig.length - 1}
+              onClick={() => setActiveStepIndex(Math.min(activeStepConfig.length - 1, safeActiveIndex + 1))}
+              disabled={safeActiveIndex === activeStepConfig.length - 1}
               className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm font-bold hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               Next

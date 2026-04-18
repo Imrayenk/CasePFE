@@ -22,9 +22,28 @@ model User {
   comments    Comment[]
   likes       Like[]
   notifications Notification[]
+  taughtSubjects Subject[] @relation("TeacherSubjects")
+  enrolledSubjects Subject[] @relation("SubjectEnrollments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Subject {
+  id                 String   @id @default(uuid())
+  name               String
+  description        String?
+  enrollmentPassword String   @unique
+  
+  teacherId          String
+  teacher            User     @relation("TeacherSubjects", fields: [teacherId], references: [id])
+  
+  cases              Case[]
+  
+  enrolledStudents   User[]   @relation("SubjectEnrollments")
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model Case {
@@ -37,9 +56,14 @@ model Case {
   category       String?
   attachments    String?  // stored as JSON string
   update_history String?  // stored as JSON string
+  required_steps String?  // stored as JSON string (array of required step keys)
+  custom_steps   String?  // stored as JSON string (array of step config objects)
   
   teacherId      String?
   teacher        User?    @relation(fields: [teacherId], references: [id])
+
+  subjectId      String?
+  subject        Subject? @relation(fields: [subjectId], references: [id])
 
   submissions    Submission[]
   comments       Comment[]
@@ -69,6 +93,8 @@ model Submission {
   guided_recommendation String?
   guided_justification String?
   guided_final_submission String?
+  guided_custom_steps String? // stored as JSON string containing custom step responses
+
   current_step    Int      @default(0)
   teacher_feedback String?
   submittedAt     DateTime?
